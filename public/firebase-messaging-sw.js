@@ -35,6 +35,14 @@ messaging.onBackgroundMessage((payload) => {
 });
 
 // Listener de cliques em notificações para abrir a rota correspondente
+self.addEventListener('install', () => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const targetUrl = event.notification.data?.url || '/';

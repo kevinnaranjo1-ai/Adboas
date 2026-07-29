@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc, deleteDoc, doc, updateDoc, arrayUnion, arrayRemove, serverTimestamp } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
 import { 
   Camera, Calendar, User, Trash2, Plus, X, Image as ImageIcon, 
   Search, Filter, Loader2, Maximize2, Sparkles, Check, AlertCircle,
-  Download, Share2
+  Download, Share2, ChevronLeft, ChevronRight, Layers, Heart
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import heic2any from 'heic2any';
@@ -14,6 +14,7 @@ import heic2any from 'heic2any';
 interface CultPhoto {
   id: string;
   imageUrl: string;
+  imageUrls?: string[];
   title: string;
   description?: string;
   date: string;
@@ -21,6 +22,7 @@ interface CultPhoto {
   uploadedById: string;
   uploadedByName: string;
   createdAt: any;
+  likes?: string[];
 }
 
 const CATEGORIES = [
@@ -116,6 +118,17 @@ export default function CultPhotosGallery({ role }: CultPhotosProps) {
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [lightboxPhoto, setLightboxPhoto] = useState<CultPhoto | null>(null);
+  const [lightboxImageIndex, setLightboxImageIndex] = useState<number>(0);
+  
+  // Local state for guest likes (offline / non-authenticated users)
+  const [guestLikes, setGuestLikes] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('cult_photos_guest_likes');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   
   // Custom delete state to avoid blocked window.confirm inside iframes
   const [photoToDelete, setPhotoToDelete] = useState<CultPhoto | null>(null);
@@ -128,41 +141,73 @@ export default function CultPhotosGallery({ role }: CultPhotosProps) {
   const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
   const [formCategory, setFormCategory] = useState('Culto de Domingo');
   const [imageType, setImageType] = useState<'upload' | 'url'>('upload');
-  const [imageUrlInput, setImageUrlInput] = useState('');
-  const [uploadedBase64, setUploadedBase64] = useState<string | null>(null);
+  const [imageUrlInputs, setImageUrlInputs] = useState<string[]>(['', '', '']);
+  const [uploadedBase64s, setUploadedBase64s] = useState<string[]>([]);
   const [previewError, setPreviewError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Handle file selection
+  // Handle file selection (up to 3 photos)
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    let file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-    const fileName = file.name.toLowerCase();
-    const fileType = (file.type || '').toLowerCase();
-    const isHeifOrHeic = fileName.endsWith('.heic') || fileName.endsWith('.heif') || fileType.includes('heic') || fileType.includes('heif');
-
-    if (!fileType.startsWith('image/') && !isHeifOrHeic) {
-      setPreviewError('Por favor selecione um arquivo de imagem válido.');
+    const currentCount = uploadedBase64s.length;
+    const slotsLeft = 3 - currentCount;
+    if (slotsLeft <= 0) {
+      setPreviewError('Você já adicionou o limite máximo de 3 fotos nesta publicação.');
       return;
     }
 
+    const selectedFiles = Array.from(files).slice(0, slotsLeft);
+    setPreviewError('');
+
     try {
-      setPreviewError('');
-      if (isHeifOrHeic) {
-        try {
-          const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.96 });
-          const resBlob = Array.isArray(converted) ? converted[0] : converted;
-          file = new File([resBlob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg' });
-        } catch (convErr) {
-          console.warn('Erro na conversão heic2any:', convErr);
+      const processedImages: string[] = [];
+      for (let rawFile of selectedFiles) {
+        let file = rawFile;
+        const fileName = file.name.toLowerCase();
+        const fileType = (file.type || '').toLowerCase();
+        const isHeifOrHeic = fileName.endsWith('.heic') || fileName.endsWith('.heif') || fileType.includes('heic') || fileType.includes('heif');
+
+        if (!fileType.startsWith('image/') && !isHeifOrHeic) {
+          continue;
         }
+
+        if (isHeifOrHeic) {
+          try {
+            const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.96 });
+            const resBlob = Array.isArray(converted) ? converted[0] : converted;
+            file = new File([resBlob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg' });
+          } catch (convErr) {
+            console.warn('Erro na conversão heic2any:', convErr);
+          }
+        }
+        const compressed = await compressImage(file);
+        processedImages.push(compressed);
       }
-      const compressed = await compressImage(file);
-      setUploadedBase64(compressed);
+
+      if (processedImages.length > 0) {
+        setUploadedBase64s(prev => [...prev, ...processedImages].slice(0, 3));
+      }
     } catch (err: any) {
       setPreviewError('Erro ao processar imagem: ' + err.message);
     }
+
+    // Reset input element value
+    e.target.value = '';
+  };
+
+  const removeUploadedImage = (indexToRemove: number) => {
+    setUploadedBase64s(prev => prev.filter((_, idx) => idx !== indexToRemove));
+  };
+
+  const updateUrlInput = (index: number, value: string) => {
+    setImageUrlInputs(prev => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+    setPreviewError('');
   };
 
   // Submit Photo Creation
@@ -170,9 +215,15 @@ export default function CultPhotosGallery({ role }: CultPhotosProps) {
     e.preventDefault();
     if (!user) return;
 
-    const finalUrl = imageType === 'upload' ? uploadedBase64 : imageUrlInput;
-    if (!finalUrl) {
-      setPreviewError('Por favor insira uma imagem (arquivo ou link externo).');
+    let finalUrls: string[] = [];
+    if (imageType === 'upload') {
+      finalUrls = uploadedBase64s;
+    } else {
+      finalUrls = imageUrlInputs.map(url => url.trim()).filter(Boolean);
+    }
+
+    if (finalUrls.length === 0) {
+      setPreviewError('Por favor insira pelo menos 1 foto (arquivo ou link URL).');
       return;
     }
 
@@ -186,7 +237,8 @@ export default function CultPhotosGallery({ role }: CultPhotosProps) {
       setPreviewError('');
 
       await addDoc(collection(db, 'cult_photos'), {
-        imageUrl: finalUrl,
+        imageUrl: finalUrls[0], // backward compatibility
+        imageUrls: finalUrls,   // array of up to 3 images
         title: formTitle.trim(),
         description: formDescription.trim(),
         date: formDate,
@@ -199,8 +251,8 @@ export default function CultPhotosGallery({ role }: CultPhotosProps) {
       // Reset Form State
       setFormTitle('');
       setFormDescription('');
-      setUploadedBase64(null);
-      setImageUrlInput('');
+      setUploadedBase64s([]);
+      setImageUrlInputs(['', '', '']);
       setIsUploadOpen(false);
     } catch (err: any) {
       console.error("Erro ao salvar foto no Firestore:", err);
@@ -250,11 +302,66 @@ export default function CultPhotosGallery({ role }: CultPhotosProps) {
     }
   };
 
-  // Baixar Foto para qualquer membro ou visitante
-  const handleDownloadPhoto = async (photo: CultPhoto, e?: React.MouseEvent) => {
+  // Check if current user or guest liked a photo
+  const isPhotoLiked = (photo: CultPhoto): boolean => {
+    if (user) {
+      return Boolean(photo.likes && photo.likes.includes(user.uid));
+    }
+    return guestLikes.includes(photo.id);
+  };
+
+  // Get total likes count including guest fallback
+  const getPhotoLikesCount = (photo: CultPhoto): number => {
+    const baseCount = photo.likes ? photo.likes.length : 0;
+    if (!user && guestLikes.includes(photo.id) && (!photo.likes || !photo.likes.includes('guest'))) {
+      return baseCount + 1;
+    }
+    return baseCount;
+  };
+
+  // Toggle Like ("Amei")
+  const handleToggleLike = async (photo: CultPhoto, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+
+    if (user) {
+      const photoRef = doc(db, 'cult_photos', photo.id);
+      const hasLiked = photo.likes && photo.likes.includes(user.uid);
+      try {
+        if (hasLiked) {
+          await updateDoc(photoRef, {
+            likes: arrayRemove(user.uid)
+          });
+        } else {
+          await updateDoc(photoRef, {
+            likes: arrayUnion(user.uid)
+          });
+        }
+      } catch (err: any) {
+        console.error("Erro ao curtir foto:", err);
+        handleFirestoreError(err, OperationType.UPDATE, `cult_photos/${photo.id}`);
+      }
+    } else {
+      // Guest local storage toggle
+      const isLiked = guestLikes.includes(photo.id);
+      let updated: string[];
+      if (isLiked) {
+        updated = guestLikes.filter(id => id !== photo.id);
+      } else {
+        updated = [...guestLikes, photo.id];
+      }
+      setGuestLikes(updated);
+      try {
+        localStorage.setItem('cult_photos_guest_likes', JSON.stringify(updated));
+      } catch {}
+    }
+  };
+
+  // Baixar Foto para qualquer membro ou visitante
+  const handleDownloadPhoto = async (photo: CultPhoto, e?: React.MouseEvent, targetUrl?: string) => {
+    if (e) e.stopPropagation();
+    const urlToDownload = targetUrl || photo.imageUrl;
     try {
-      const response = await fetch(photo.imageUrl);
+      const response = await fetch(urlToDownload);
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -267,7 +374,7 @@ export default function CultPhotosGallery({ role }: CultPhotosProps) {
     } catch (err) {
       // Fallback em caso de bloqueio CORS no fetch de blob
       const link = document.createElement('a');
-      link.href = photo.imageUrl;
+      link.href = urlToDownload;
       link.target = '_blank';
       link.download = `${photo.title.toLowerCase().replace(/\s+/g, '_')}.jpg`;
       document.body.appendChild(link);
@@ -277,11 +384,12 @@ export default function CultPhotosGallery({ role }: CultPhotosProps) {
   };
 
   // Compartilhar A PRÓPRIA IMAGEM (arquivo HD) no WhatsApp / Redes Sociais
-  const handleSharePhoto = async (photo: CultPhoto, e?: React.MouseEvent) => {
+  const handleSharePhoto = async (photo: CultPhoto, e?: React.MouseEvent, targetUrl?: string) => {
     if (e) e.stopPropagation();
+    const urlToShare = targetUrl || photo.imageUrl;
 
     try {
-      const response = await fetch(photo.imageUrl);
+      const response = await fetch(urlToShare);
       const blob = await response.blob();
       const file = new File([blob], `${photo.title.toLowerCase().replace(/\s+/g, '_')}.jpg`, { type: blob.type || 'image/jpeg' });
 
@@ -299,8 +407,7 @@ export default function CultPhotosGallery({ role }: CultPhotosProps) {
     }
 
     // 2. Fallback Universal para computadores ou navegadores sem suporte a files:
-    // Baixa a imagem HD automaticamente e abre o WhatsApp com a legenda pronta!
-    handleDownloadPhoto(photo);
+    handleDownloadPhoto(photo, undefined, urlToShare);
     const caption = `*${photo.title}* 📸✨\n${photo.description ? photo.description + '\n' : ''}\n_Enviado da AD Boas Novas_`;
     const whatsUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(caption)}`;
     window.open(whatsUrl, '_blank');
@@ -435,6 +542,12 @@ export default function CultPhotosGallery({ role }: CultPhotosProps) {
           <AnimatePresence mode="popLayout">
             {filteredPhotos.map((photo) => {
               const canDelete = user && (photo.uploadedById === user.uid || isAdminOrOfficer);
+              const allImages = photo.imageUrls?.length ? photo.imageUrls : [photo.imageUrl];
+              const coverImage = allImages[0];
+              const totalPhotos = allImages.length;
+              const isLiked = isPhotoLiked(photo);
+              const likesCount = getPhotoLikesCount(photo);
+
               return (
                 <motion.div
                   key={photo.id}
@@ -449,19 +562,34 @@ export default function CultPhotosGallery({ role }: CultPhotosProps) {
                   {/* Photo frame */}
                   <div className="relative overflow-hidden h-48 w-full bg-church-navy/5 shrink-0">
                     <img
-                      src={photo.imageUrl}
+                      src={coverImage}
                       alt={photo.title}
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 cursor-pointer"
                       loading="lazy"
                       referrerPolicy="no-referrer"
-                      onClick={() => setLightboxPhoto(photo)}
+                      onClick={() => {
+                        setLightboxPhoto(photo);
+                        setLightboxImageIndex(0);
+                      }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/0 to-transparent md:opacity-0 md:group-hover:opacity-100 opacity-100 transition-all duration-200 flex items-end justify-between p-3 pointer-events-none">
                       <div className="flex items-center gap-1.5 pointer-events-auto">
                         <button
+                          onClick={(e) => handleToggleLike(photo, e)}
+                          className={`p-2 rounded-xl shadow transition-transform active:scale-75 flex items-center justify-center cursor-pointer ${
+                            isLiked 
+                              ? 'bg-rose-500 text-white shadow-rose-500/30' 
+                              : 'bg-white/90 hover:bg-white text-rose-500'
+                          }`}
+                          title={isLiked ? "Remover Amei" : "Amei esta foto"}
+                        >
+                          <Heart className={`h-3.5 w-3.5 ${isLiked ? 'fill-current' : ''}`} />
+                        </button>
+                        <button
                           onClick={(e) => {
                             e.stopPropagation();
                             setLightboxPhoto(photo);
+                            setLightboxImageIndex(0);
                           }}
                           className="bg-white/90 hover:bg-white text-church-navy p-2 rounded-xl shadow transition-transform active:scale-90 flex items-center justify-center cursor-pointer"
                           title="Ampliar Foto"
@@ -469,14 +597,14 @@ export default function CultPhotosGallery({ role }: CultPhotosProps) {
                           <Maximize2 className="h-3.5 w-3.5" />
                         </button>
                         <button
-                          onClick={(e) => handleDownloadPhoto(photo, e)}
+                          onClick={(e) => handleDownloadPhoto(photo, e, coverImage)}
                           className="bg-white/90 hover:bg-white text-church-navy p-2 rounded-xl shadow transition-transform active:scale-90 flex items-center justify-center cursor-pointer text-church-gold"
                           title="Baixar Foto"
                         >
                           <Download className="h-3.5 w-3.5" />
                         </button>
                         <button
-                          onClick={(e) => handleSharePhoto(photo, e)}
+                          onClick={(e) => handleSharePhoto(photo, e, coverImage)}
                           className="bg-white/90 hover:bg-white text-church-navy p-2 rounded-xl shadow transition-transform active:scale-90 flex items-center justify-center cursor-pointer text-emerald-600"
                           title="Compartilhar Imagem"
                         >
@@ -500,6 +628,14 @@ export default function CultPhotosGallery({ role }: CultPhotosProps) {
                     <span className="absolute top-3 left-3 bg-church-navy/85 backdrop-blur-sm text-church-gold px-2.5 py-0.5 rounded-lg text-[9px] font-extrabold uppercase tracking-widest border border-church-gold/30">
                       {photo.category}
                     </span>
+
+                    {/* Multi-photo Indicator Badge */}
+                    {totalPhotos > 1 && (
+                      <span className="absolute top-3 right-3 bg-black/75 backdrop-blur-sm text-white px-2 py-0.5 rounded-lg text-[10px] font-extrabold flex items-center gap-1 border border-white/20 shadow-xs">
+                        <Layers className="h-3 w-3 text-church-gold" />
+                        <span>{totalPhotos} fotos</span>
+                      </span>
+                    )}
                   </div>
 
                   {/* Body Text */}
@@ -516,15 +652,30 @@ export default function CultPhotosGallery({ role }: CultPhotosProps) {
                     </div>
 
                     {/* Metadata Footer bar */}
-                    <div className="mt-3 pt-3 border-t border-church-gold/5 flex flex-col gap-1 text-[10px] text-church-navy/40 font-semibold font-mono">
-                      <div className="flex items-center gap-1.5">
-                        <Calendar className="h-3 w-3 text-church-gold shrink-0" />
-                        <span>{formatDateBR(photo.date)}</span>
+                    <div className="mt-3 pt-3 border-t border-church-gold/10 flex items-center justify-between text-[10px] text-church-navy/60 font-semibold font-mono">
+                      <div className="flex flex-col gap-0.5 truncate pr-2">
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className="h-3 w-3 text-church-gold shrink-0" />
+                          <span>{formatDateBR(photo.date)}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 truncate text-[9.5px] text-church-navy/40">
+                          <User className="h-3 w-3 text-church-gold shrink-0" />
+                          <span className="truncate">{photo.uploadedByName}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1.5 mt-0.5 truncate">
-                        <User className="h-3 w-3 text-church-gold shrink-0" />
-                        <span className="truncate">Publicado por {photo.uploadedByName}</span>
-                      </div>
+
+                      <button
+                        onClick={(e) => handleToggleLike(photo, e)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-90 cursor-pointer shrink-0 ${
+                          isLiked
+                            ? 'bg-rose-500 text-white border border-rose-500 shadow-sm'
+                            : 'bg-rose-50/80 hover:bg-rose-100/80 text-rose-600 border border-rose-200/80'
+                        }`}
+                        title="Dar amei nesta foto"
+                      >
+                        <Heart className={`h-3.5 w-3.5 ${isLiked ? 'fill-current' : 'text-rose-500'}`} />
+                        <span>{likesCount > 0 ? likesCount : 'Amei'}</span>
+                      </button>
                     </div>
                   </div>
                 </motion.div>
@@ -536,113 +687,184 @@ export default function CultPhotosGallery({ role }: CultPhotosProps) {
 
       {/* LIGHTBOX MODAL / LARGE PREVIEW */}
       <AnimatePresence>
-        {lightboxPhoto && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 md:p-8 backdrop-blur-md"
-            onClick={() => setLightboxPhoto(null)}
-          >
+        {lightboxPhoto && (() => {
+          const images = lightboxPhoto.imageUrls?.length ? lightboxPhoto.imageUrls : [lightboxPhoto.imageUrl];
+          const activeIndex = Math.min(lightboxImageIndex, images.length - 1);
+          const currentImg = images[activeIndex];
+
+          return (
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-              className="relative max-w-4xl w-full bg-white rounded-3xl overflow-hidden border border-church-gold/20 shadow-2xl flex flex-col md:flex-row max-h-[90vh]"
-              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 md:p-8 backdrop-blur-md"
+              onClick={() => setLightboxPhoto(null)}
             >
-              {/* Left Column / Enlarged Photo */}
-              <div className="relative md:flex-[5] bg-black flex items-center justify-center overflow-hidden min-h-[300px] md:h-[600px]">
-                <img
-                  src={lightboxPhoto.imageUrl}
-                  alt={lightboxPhoto.title}
-                  className="max-h-full max-w-full object-contain"
-                  referrerPolicy="no-referrer"
-                />
-                <button
-                  onClick={() => setLightboxPhoto(null)}
-                  className="absolute top-4 right-4 rounded-full bg-black/60 hover:bg-black p-2.5 text-white shadow-md transition-colors"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                className="relative max-w-4xl w-full bg-white rounded-3xl overflow-hidden border border-church-gold/20 shadow-2xl flex flex-col md:flex-row max-h-[90vh]"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Left Column / Enlarged Photo */}
+                <div className="relative md:flex-[5] bg-black flex flex-col items-center justify-center overflow-hidden min-h-[320px] md:h-[600px] select-none">
+                  <img
+                    src={currentImg}
+                    alt={`${lightboxPhoto.title} - Foto ${activeIndex + 1}`}
+                    className="max-h-full max-w-full object-contain"
+                    referrerPolicy="no-referrer"
+                  />
 
-              {/* Right Column / Metadata Sidebar */}
-              <div className="md:flex-[3] p-6 lg:p-8 flex flex-col justify-between bg-white text-church-navy min-h-[200px] overflow-y-auto">
-                <div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="bg-church-navy px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-church-gold border border-church-gold/10">
-                      {lightboxPhoto.category}
-                    </span>
-                    <span className="text-[10px] font-bold text-church-navy/40 uppercase tracking-wide">
-                      Memória registrada
-                    </span>
-                  </div>
-
-                  <h3 className="font-serif font-black text-xl lg:text-2xl mt-4 leading-snug">
-                    {lightboxPhoto.title}
-                  </h3>
-
-                  <div className="flex flex-col gap-2.5 bg-church-cream/50 border border-church-gold/10 p-3.5 rounded-xl mt-4 text-xs font-semibold font-mono text-church-navy/70">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-church-gold" />
-                      <span>{formatDateBR(lightboxPhoto.date)}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-church-gold" />
-                      <span className="truncate">Postado por: {lightboxPhoto.uploadedByName}</span>
-                    </div>
-                  </div>
-
-                  {lightboxPhoto.description ? (
-                    <div className="mt-6">
-                      <p className="text-[10px] font-extrabold text-church-navy/40 uppercase tracking-widest">
-                        Testemunho / Descrição
-                      </p>
-                      <p className="text-sm leading-relaxed text-church-navy/80 font-medium mt-1.5 whitespace-pre-line bg-church-cream/20 p-4 rounded-xl border border-dashed border-church-gold/15">
-                        {lightboxPhoto.description}
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="text-xs italic text-church-navy/35 mt-6">
-                      Nenhum testemunho adicional fornecido para este culto.
-                    </p>
+                  {/* Navigation Arrows for multi-photo */}
+                  {images.length > 1 && (
+                    <>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLightboxImageIndex(prev => (prev > 0 ? prev - 1 : images.length - 1));
+                        }}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/60 hover:bg-black p-2.5 text-white shadow-lg transition-transform active:scale-90 cursor-pointer border border-white/20"
+                        title="Foto Anterior"
+                      >
+                        <ChevronLeft className="h-5 w-5" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLightboxImageIndex(prev => (prev < images.length - 1 ? prev + 1 : 0));
+                        }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/60 hover:bg-black p-2.5 text-white shadow-lg transition-transform active:scale-90 cursor-pointer border border-white/20"
+                        title="Próxima Foto"
+                      >
+                        <ChevronRight className="h-5 w-5" />
+                      </button>
+                    </>
                   )}
-                </div>
 
-                <div className="mt-8 pt-4 border-t border-church-gold/10 flex flex-wrap items-center justify-end gap-2.5 shrink-0">
-                  <button
-                    onClick={(e) => handleDownloadPhoto(lightboxPhoto, e)}
-                    className="flex items-center justify-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-church-navy border border-church-gold/30 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
-                  >
-                    <Download className="h-4 w-4 text-church-gold" /> Baixar Foto HD
-                  </button>
-                  <button
-                    onClick={(e) => handleSharePhoto(lightboxPhoto, e)}
-                    className="flex items-center justify-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
-                  >
-                    <Share2 className="h-4 w-4" /> Compartilhar Imagem
-                  </button>
-                  {user && (lightboxPhoto.uploadedById === user.uid || isAdminOrOfficer) && (
-                    <button
-                      onClick={() => handleDeletePhoto(lightboxPhoto)}
-                      className="flex items-center justify-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
-                    >
-                      <Trash2 className="h-4 w-4" /> Remover
-                    </button>
-                  )}
+                  {/* Close button */}
                   <button
                     onClick={() => setLightboxPhoto(null)}
-                    className="bg-church-navy hover:bg-church-navy/90 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                    className="absolute top-4 right-4 rounded-full bg-black/60 hover:bg-black p-2.5 text-white shadow-md transition-colors z-10"
                   >
-                    Fechar
+                    <X className="h-5 w-5" />
                   </button>
+
+                  {/* Thumbnail Selector Bar if multiple photos */}
+                  {images.length > 1 && (
+                    <div className="absolute bottom-3 inset-x-0 flex items-center justify-center gap-2 z-10 px-4">
+                      <div className="bg-black/75 backdrop-blur-md p-1.5 rounded-2xl border border-white/20 flex items-center gap-2">
+                        {images.map((imgUrl, idx) => (
+                          <button
+                            key={idx}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setLightboxImageIndex(idx);
+                            }}
+                            className={`relative h-11 w-11 rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
+                              idx === activeIndex
+                                ? 'border-church-gold scale-105 shadow-md'
+                                : 'border-white/30 opacity-60 hover:opacity-100'
+                            }`}
+                          >
+                            <img src={imgUrl} alt={`Foto ${idx + 1}`} className="h-full w-full object-cover" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
+
+                {/* Right Column / Metadata Sidebar */}
+                <div className="md:flex-[3] p-6 lg:p-8 flex flex-col justify-between bg-white text-church-navy min-h-[200px] overflow-y-auto">
+                  <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="bg-church-navy px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-church-gold border border-church-gold/10">
+                        {lightboxPhoto.category}
+                      </span>
+                      {images.length > 1 && (
+                        <span className="text-[10px] font-extrabold text-church-navy/60 bg-church-cream border border-church-gold/20 px-2.5 py-0.5 rounded-full font-mono">
+                          Foto {activeIndex + 1} de {images.length}
+                        </span>
+                      )}
+                    </div>
+
+                    <h3 className="font-serif font-black text-xl lg:text-2xl mt-4 leading-snug">
+                      {lightboxPhoto.title}
+                    </h3>
+
+                    <div className="flex flex-col gap-2.5 bg-church-cream/50 border border-church-gold/10 p-3.5 rounded-xl mt-4 text-xs font-semibold font-mono text-church-navy/70">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-church-gold" />
+                        <span>{formatDateBR(lightboxPhoto.date)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-church-gold" />
+                        <span className="truncate">Postado por: {lightboxPhoto.uploadedByName}</span>
+                      </div>
+                    </div>
+
+                    {lightboxPhoto.description ? (
+                      <div className="mt-6">
+                        <p className="text-[10px] font-extrabold text-church-navy/40 uppercase tracking-widest">
+                          Testemunho / Descrição
+                        </p>
+                        <p className="text-sm leading-relaxed text-church-navy/80 font-medium mt-1.5 whitespace-pre-line bg-church-cream/20 p-4 rounded-xl border border-dashed border-church-gold/15">
+                          {lightboxPhoto.description}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-xs italic text-church-navy/35 mt-6">
+                        Nenhum testemunho adicional fornecido para este culto.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="mt-8 pt-4 border-t border-church-gold/10 flex flex-wrap items-center justify-end gap-2.5 shrink-0">
+                    <button
+                      onClick={(e) => handleToggleLike(lightboxPhoto, e)}
+                      className={`flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer ${
+                        isPhotoLiked(lightboxPhoto)
+                          ? 'bg-rose-500 text-white border border-rose-500 shadow-md shadow-rose-500/20'
+                          : 'bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200'
+                      }`}
+                    >
+                      <Heart className={`h-4 w-4 ${isPhotoLiked(lightboxPhoto) ? 'fill-current' : 'text-rose-500'}`} />
+                      <span>{getPhotoLikesCount(lightboxPhoto) > 0 ? `${getPhotoLikesCount(lightboxPhoto)} Amei` : 'Amei'}</span>
+                    </button>
+                    <button
+                      onClick={(e) => handleDownloadPhoto(lightboxPhoto, e, currentImg)}
+                      className="flex items-center justify-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-church-navy border border-church-gold/30 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                    >
+                      <Download className="h-4 w-4 text-church-gold" /> Baixar Foto
+                    </button>
+                    <button
+                      onClick={(e) => handleSharePhoto(lightboxPhoto, e, currentImg)}
+                      className="flex items-center justify-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                    >
+                      <Share2 className="h-4 w-4" /> Compartilhar
+                    </button>
+                    {user && (lightboxPhoto.uploadedById === user.uid || isAdminOrOfficer) && (
+                      <button
+                        onClick={() => handleDeletePhoto(lightboxPhoto)}
+                        className="flex items-center justify-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                      >
+                        <Trash2 className="h-4 w-4" /> Remover
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setLightboxPhoto(null)}
+                      className="bg-church-navy hover:bg-church-navy/90 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                    >
+                      Fechar
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
+          );
+        })()}
       </AnimatePresence>
 
       {/* CUSTOM DELETE CONFIRMATION MODAL */}
@@ -844,33 +1066,56 @@ export default function CultPhotosGallery({ role }: CultPhotosProps) {
 
                   {/* Form fields based on image selection type */}
                   {imageType === 'upload' ? (
-                    <div>
-                      {uploadedBase64 ? (
-                        <div className="relative h-44 rounded-xl border border-church-gold/20 overflow-hidden bg-black flex items-center justify-center">
-                          <img
-                            src={uploadedBase64}
-                            alt="Preview do Upload"
-                            className="h-full w-full object-cover opacity-85"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setUploadedBase64(null)}
-                            className="absolute top-2.5 right-2.5 p-1.5 rounded-full bg-black/60 hover:bg-black text-white transition-colors"
-                            title="Remover Imagem"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                          <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1 bg-green-500 text-white text-[10px] uppercase font-black tracking-widest px-2 py-0.5 rounded-full border border-green-400">
-                            <Check className="h-3.5 w-3.5" /> Otimizado com sucesso
-                          </div>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-[11px] font-bold text-church-navy/80 uppercase tracking-wider">
+                          Fotos do Culto ({uploadedBase64s.length}/3) *
+                        </label>
+                        <span className="text-[10px] text-church-navy/50 font-medium">
+                          Máximo 3 fotos por publicação
+                        </span>
+                      </div>
+
+                      {uploadedBase64s.length > 0 && (
+                        <div className="grid grid-cols-3 gap-2.5">
+                          {uploadedBase64s.map((imgBase64, idx) => (
+                            <div key={idx} className="relative h-28 rounded-xl border border-church-gold/20 overflow-hidden bg-black group">
+                              <img
+                                src={imgBase64}
+                                alt={`Foto ${idx + 1}`}
+                                className="h-full w-full object-cover opacity-90 group-hover:scale-105 transition-transform"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removeUploadedImage(idx)}
+                                className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/70 hover:bg-red-600 text-white transition-colors cursor-pointer shadow-md"
+                                title="Remover esta foto"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                              <span className="absolute bottom-1.5 left-1.5 bg-black/70 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md border border-white/20">
+                                Foto {idx + 1}
+                              </span>
+                            </div>
+                          ))}
                         </div>
-                      ) : (
-                        <label className="flex flex-col items-center justify-center border-2 border-dashed border-church-gold/20 hover:border-church-gold/40 rounded-xl p-8 cursor-pointer transition-all bg-white hover:bg-church-cream/10 text-center">
-                          <ImageIcon className="h-8 w-8 text-church-gold mb-2.5" />
-                          <p className="text-xs font-bold text-church-navy">Arraste ou Selecione Foto do Culto</p>
-                          <p className="text-[10px] text-church-navy/40 font-semibold mt-1">JPEG, PNG ou HEIF/HEIC (Alta Eficiência de iPhones)</p>
+                      )}
+
+                      {uploadedBase64s.length < 3 && (
+                        <label className="flex flex-col items-center justify-center border-2 border-dashed border-church-gold/30 hover:border-church-gold/60 rounded-xl p-5 cursor-pointer transition-all bg-white hover:bg-church-cream/20 text-center">
+                          <div className="flex items-center gap-2 text-church-gold mb-1">
+                            <Plus className="h-5 w-5" />
+                            <ImageIcon className="h-6 w-6" />
+                          </div>
+                          <p className="text-xs font-bold text-church-navy">
+                            {uploadedBase64s.length === 0 ? 'Selecionar até 3 Fotos do Culto' : 'Adicionar Mais Fotos'}
+                          </p>
+                          <p className="text-[10px] text-church-navy/50 font-medium mt-0.5">
+                            JPEG, PNG ou HEIC (Celulares iPhone/Android). Selecione 1 a 3 imagens.
+                          </p>
                           <input
                             type="file"
+                            multiple
                             accept="image/*,.heic,.heif"
                             onChange={handleFileChange}
                             className="hidden"
@@ -879,25 +1124,24 @@ export default function CultPhotosGallery({ role }: CultPhotosProps) {
                       )}
                     </div>
                   ) : (
-                    <div className="space-y-2">
-                      <label className="block text-[11px] font-bold text-church-navy/70">
-                        Insira a URL da imagem (http:// ou https://)
+                    <div className="space-y-3">
+                      <label className="block text-[11px] font-bold text-church-navy/80 uppercase tracking-wider">
+                        URLs das Fotos (Até 3 fotos) *
                       </label>
-                      <input
-                        type="url"
-                        placeholder="https://exemplo.com/minha-foto-culto.jpg"
-                        value={imageUrlInput}
-                        onChange={(e) => {
-                          setImageUrlInput(e.target.value);
-                          setPreviewError('');
-                        }}
-                        className="w-full bg-white border border-church-gold/10 hover:border-church-gold/20 focus:border-church-gold focus:outline-none focus:ring-1 focus:ring-church-gold px-3.5 py-2.5 rounded-xl text-xs font-medium font-mono text-church-navy"
-                      />
-                      {imageUrlInput && (
-                        <div className="text-[10px] text-church-navy/40 mt-1 pl-1">
-                          Nota: Garanta que o domínio da imagem aceita acesso público.
+                      {[0, 1, 2].map((idx) => (
+                        <div key={idx} className="space-y-1">
+                          <div className="flex items-center justify-between text-[10px] font-bold text-church-navy/60">
+                            <span>Foto {idx + 1} {idx === 0 ? '(Obrigatória)' : '(Opcional)'}</span>
+                          </div>
+                          <input
+                            type="url"
+                            placeholder={idx === 0 ? "https://exemplo.com/foto1.jpg" : `https://exemplo.com/foto${idx + 1}.jpg`}
+                            value={imageUrlInputs[idx] || ''}
+                            onChange={(e) => updateUrlInput(idx, e.target.value)}
+                            className="w-full bg-white border border-church-gold/10 hover:border-church-gold/20 focus:border-church-gold focus:outline-none focus:ring-1 focus:ring-church-gold px-3.5 py-2 rounded-xl text-xs font-medium font-mono text-church-navy"
+                          />
                         </div>
-                      )}
+                      ))}
                     </div>
                   )}
                 </div>

@@ -55,39 +55,52 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-const CACHE_NAME = 'boas-novas-v1';
+const CACHE_NAME = 'boas-novas-v2.0.0';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/logo.png',
-  '/favicon.ico'
+  '/favicon.ico',
+  '/manifest.json'
 ];
 
-// Install Service Worker and cache essential assets
+// Message listener for force update
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
+// Install Service Worker and skip waiting immediately
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS_TO_CACHE);
-    }).then(() => self.skipWaiting())
+    })
   );
 });
 
-// Activate event (cleanup old caches)
+// Activate event (cleanup old caches and claim clients immediately)
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cache) => {
           if (cache !== CACHE_NAME) {
+            console.log('[ServiceWorker] Apagando cache antigo:', cache);
             return caches.delete(cache);
           }
         })
       );
-    }).then(() => self.clients.claim())
+    }).then(() => {
+      console.log('[ServiceWorker] Assumindo controle de todas as abas/clientes (clients.claim)');
+      return self.clients.claim();
+    })
   );
 });
 
-// Fetch event (network falling back to cache, with special handling for SPA routes)
+// Fetch event (Network-First for navigation and logo, falling back to cache if offline)
 self.addEventListener('fetch', (event) => {
   // We only intercept GET requests
   if (event.request.method !== 'GET') return;
@@ -103,44 +116,49 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Handle SPA routing: if requesting an HTML page that's not cached, serve the index.html
+  // Network-First for main pages, logo, and icons so users get new updates instantly when online
+  const isMainAssetOrPage = (
+    event.request.mode === 'navigate' || 
+    url.pathname === '/' || 
+    url.pathname.endsWith('/logo.png') || 
+    url.pathname.endsWith('/index.html') ||
+    url.pathname.endsWith('/manifest.json')
+  );
+
+  if (isMainAssetOrPage) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          // Fallback to cache if offline
+          return caches.match(event.request).then((cached) => cached || caches.match('/'));
+        })
+    );
+    return;
+  }
+
+  // Stale-while-revalidate / cache-first for secondary resources
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-
-      return fetch(event.request).then((networkResponse) => {
-        // Return resource from network
-        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
-          return networkResponse;
-        }
-
-        // Cache newly requested static resources (JS, CSS, images, fonts)
-        const isStaticResource = (
-          url.pathname.endsWith('.js') || 
-          url.pathname.endsWith('.css') || 
-          url.pathname.endsWith('.png') || 
-          url.pathname.endsWith('.jpg') || 
-          url.pathname.endsWith('.jpeg') || 
-          url.pathname.endsWith('.svg') || 
-          url.pathname.includes('/assets/')
-        );
-
-        if (isStaticResource) {
+      const fetchPromise = fetch(event.request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseToCache);
           });
         }
-
         return networkResponse;
-      }).catch(() => {
-        // Fallback for navigation requests (HTML/page loads) to index.html to support SPA offline load
-        if (event.request.mode === 'navigate') {
-          return caches.match('/');
-        }
-      });
+      }).catch(() => cachedResponse);
+
+      return cachedResponse || fetchPromise;
     })
   );
 });
