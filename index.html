@@ -52,6 +52,13 @@
                 // Força verificação imediata por novas versões no servidor
                 registration.update();
 
+                // Verifica atualizações quando o aplicativo é aberto no celular (visibilitychange)
+                document.addEventListener('visibilitychange', () => {
+                  if (document.visibilityState === 'visible') {
+                    registration.update();
+                  }
+                });
+
                 // Recarrega a página suavemente quando o novo Service Worker assumir o controle (clients.claim)
                 let refreshing = false;
                 navigator.serviceWorker.addEventListener('controllerchange', () => {

@@ -4,7 +4,7 @@ import {
   LayoutDashboard, DollarSign, Users, Shield, 
   Heart, BookOpen, FileText, Hammer, 
   Calendar, X, Camera, Download, Share2, Check, User, Music, Instagram, ClipboardList,
-  Smartphone, Share, Plus, MoreVertical, Youtube, Baby, Store
+  Smartphone, Share, Plus, MoreVertical, Youtube, Baby, Store, RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Logo from '../Logo';
@@ -111,6 +111,26 @@ export default function AdminSidebar({ role, onClose }: SidebarProps) {
     }
   };
 
+  const handleForceUpdateApp = async () => {
+    try {
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (let registration of registrations) {
+          await registration.unregister();
+        }
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        for (let key of keys) {
+          await caches.delete(key);
+        }
+      }
+      window.location.reload();
+    } catch (err) {
+      window.location.reload();
+    }
+  };
+
 
 
   const menuItems = [
@@ -207,6 +227,15 @@ export default function AdminSidebar({ role, onClose }: SidebarProps) {
         >
           <Share2 className="h-4 w-4 shrink-0" />
           <span>Compartilhar Aplicativo</span>
+        </button>
+
+        <button
+          onClick={handleForceUpdateApp}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 hover:text-amber-200 py-2.5 px-4 text-xs font-bold border border-amber-500/20 transition-all active:scale-95 cursor-pointer"
+          title="Forçar atualização e limpar cache do celular"
+        >
+          <RefreshCw className="h-4 w-4 shrink-0" />
+          <span>Atualizar Versão (Limpar Cache)</span>
         </button>
 
         <a

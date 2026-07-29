@@ -55,7 +55,7 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-const CACHE_NAME = 'boas-novas-v2.0.0';
+const CACHE_NAME = 'boas-novas-v3.6.0-logo-update-force';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',

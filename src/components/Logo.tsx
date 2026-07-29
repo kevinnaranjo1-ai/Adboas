@@ -24,7 +24,7 @@ export default function Logo({ className = '', size = 48, variant = 'standard' }
 
   return (
     <img
-      src="/logo.png"
+      src="/logo.png?v=3"
       alt="Logo AD Boas Novas"
       onError={() => setImgError(true)}
       referrerPolicy="no-referrer"
