@@ -1,0 +1,263 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Default Deny and Super Admin Override
+    match /{document=**} {
+      allow read, write: if isSuperAdmin();
+    }
+
+    // --- Helpers ---
+    function isSignedIn() { return request.auth != null; }
+    function isEmailVerified() { return request.auth.token.email_verified == true; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isOwner(userId) { return request.auth.uid == userId; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    
+    function isSuperAdmin() {
+      return isSignedIn() &&
+             request.auth.token.email != null &&
+             request.auth.token.email.lower() == 'kevinnaranjo1@gmail.com';
+    }
+
+    function isPastorAdmin() {
+      return isSignedIn() && 
+             (
+               isSuperAdmin() ||
+               (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+                get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '').lower() in ['admin', 'pastor', 'pastora'])
+             );
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && 
+             (
+               isSuperAdmin() ||
+               (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+                get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '').lower() in ['admin', 'pastor', 'pastora', 'leader', 'lider', 'líder', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'mídia social'])
+             );
+    }
+
+    function canManageMembers() {
+      return isSignedIn();
+    }
+
+    match /test/connection {
+      allow read: if true;
+    }
+
+    // --- Settings ---
+    match /settings/{settingId} {
+      allow read: if isSignedIn();
+      allow write: if isPastorAdmin();
+    }
+
+    // --- Users ---
+    match /users/{userId} {
+      allow get: if isSignedIn() && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      
+      function isValidUser(data) {
+        return data.uid == request.auth.uid &&
+               data.email is string &&
+               data.role in ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'mídia social', 'membro'] &&
+               data.keys().hasAll(['uid', 'email', 'role']);
+      }
+
+      allow create: if isSignedIn() && isOwner(userId) && isValidUser(incoming());
+      
+      allow update: if isSignedIn() && (
+        (isOwner(userId) && incoming().role == existing().role && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'updatedAt'])) ||
+        isAdmin()
+      );
+      
+      allow delete: if isPastorAdmin();
+    }
+
+    // --- Departments ---
+    match /departments/{deptId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isPastorAdmin();
+    }
+
+    // --- Reports ---
+    match /reports/{reportId} {
+      allow list: if isSignedIn() && (isPastorAdmin() || existing().enviadoById == request.auth.uid);
+      allow get: if isSignedIn() && (isPastorAdmin() || existing().enviadoById == request.auth.uid);
+
+      function isValidReport(data) {
+        return data.keys().hasAll(['type', 'month', 'year', 'content', 'enviadoById']) &&
+               data.type in ['pastoral', 'department'] &&
+               data.month >= 1 && data.month <= 12 &&
+               data.year >= 2000 &&
+               data.content is string && data.content.size() <= 50000 &&
+               data.enviadoById == request.auth.uid &&
+               isValidId(data.enviadoById);
+      }
+
+      allow create: if isSignedIn() && (isPastorAdmin() || isAdmin()) && isValidReport(incoming());
+      allow update: if isSignedIn() && (
+        (existing().enviadoById == request.auth.uid && isValidReport(incoming()) && existing().status != 'enviado') ||
+        isPastorAdmin()
+      );
+      allow delete: if isPastorAdmin();
+    }
+
+    // --- Transactions ---
+    match /transactions/{id} {
+      // Sensitive: Only pastors and admins can read/write financial data
+      allow read, create, update, delete: if isPastorAdmin();
+    }
+
+    // --- Events ---
+    match /events/{id} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isPastorAdmin();
+    }
+
+    // --- Members ---
+    match /members/{memberId} {
+      // All signed in users can read members
+      allow read: if isSignedIn();
+      // Admins, Officers, and Members can create/update
+      allow create: if canManageMembers();
+      allow update: if canManageMembers() || (isSignedIn() && existing().email != null && existing().email == request.auth.token.email);
+      // Only Pastors and the SuperAdmin can delete
+      allow delete: if isPastorAdmin();
+    }
+
+    // --- Attendance ---
+    match /attendance/{attendanceId} {
+      allow read, create, update, delete: if isAdmin();
+    }
+
+    // --- Construction & Assets ---
+    match /construction_items/{id} {
+      allow read, create, update, delete: if isPastorAdmin();
+    }
+    match /assets/{id} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isPastorAdmin();
+    }
+    match /workers/{id} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isPastorAdmin();
+    }
+    match /departments/{id} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isPastorAdmin();
+    }
+
+    // --- Cult Photos ---
+    match /cult_photos/{photoId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && (existing().uploadedById == request.auth.uid || isAdmin());
+    }
+
+    // --- FCM Tokens ---
+    match /fcm_tokens/{tokenId} {
+      allow read: if isSignedIn() && (isPastorAdmin() || resource.data.userId == request.auth.uid);
+      allow create, update: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // --- Notifications ---
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy', 'clearedBy']);
+      allow delete: if isPastorAdmin();
+    }
+
+    // --- Prayer Requests ---
+    match /prayer_requests/{requestId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (
+        existing().userId == request.auth.uid || 
+        isAdmin() || 
+        incoming().diff(existing()).affectedKeys().hasOnly(['prayersCount', 'prayingUsers'])
+      );
+      allow delete: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+    }
+
+    // --- Studies / Teachings ---
+    match /studies/{studyId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isPastorAdmin();
+    }
+
+    // --- Shared Video Links ---
+    match /video_links/{linkId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
+    }
+
+    // --- Visitantes ---
+    match /visitantes/{visitorId} {
+      allow read, create, update, delete: if isSignedIn();
+    }
+
+    // --- Crianças Apresentadas ---
+    match /criancas_apresentadas/{childId} {
+      allow read, create, update, delete: if isSignedIn();
+    }
+
+    // --- Personal User Notes ---
+    match /user_notes/{noteId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // --- Settings (Global configs like announcements) ---
+    match /settings/{settingId} {
+      allow read: if true;
+      allow create, update, delete: if isPastorAdmin();
+    }
+
+    // --- EBD (Escola Bíblica Dominical) ---
+    match /ebd_classes/{classId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /ebd_students/{studentId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /ebd_attendance/{reportId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /ebd_materials/{materialId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // --- Visitas e Cultos Realizados ---
+    match /visitas_cultos/{visitId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && (resource.data.registeredById == request.auth.uid || isAdmin());
+    }
+
+    // --- Businesses & Services (Empreendimentos) ---
+    match /businesses/{businessId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+
+      match /reviews/{reviewId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+        allow update, delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      }
+    }
+  }
+}

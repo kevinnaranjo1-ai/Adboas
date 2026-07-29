@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- iOS / Apple Web App Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Boas Novas" />
+    <link rel="apple-touch-icon" href="/logo.png" />
+    
+    <!-- Theme colors for browser frames -->
+    <meta name="theme-color" content="#1a365d" />
+    <meta name="msapplication-Navbutton-Color" content="#1a365d" />
+    
+    <title>AD Boas Novas - Tenda da Promessa</title>
+    
+    <!-- PWA Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        // Verifica se é o ambiente de desenvolvimento
+        const isDev = window.location.hostname.includes('ais-dev') || window.location.hostname.includes('localhost');
+        
+        if (isDev) {
+          // Se for desenvolvimento, desativa e limpa os service workers e caches para garantir que as alterações apareçam na hora
+          navigator.serviceWorker.getRegistrations().then((registrations) => {
+            for (let registration of registrations) {
+              registration.unregister().then((success) => {
+                if (success) console.log('Service worker antigo removido no ambiente de desenvolvimento.');
+              });
+            }
+          });
+          
+          // Limpa caches antigos do navegador
+          if ('caches' in window) {
+            caches.keys().then((names) => {
+              for (let name of names) {
+                caches.delete(name);
+              }
+            });
+          }
+        } else {
+          // Se for produção/preview compartilhado, registra o Service Worker normalmente
+          window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js')
+              .then((registration) => {
+                console.log('PWA Service Worker registrado com sucesso:', registration.scope);
+              })
+              .catch((error) => {
+                console.error('Falha ao registrar PWA Service Worker:', error);
+              });
+          });
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

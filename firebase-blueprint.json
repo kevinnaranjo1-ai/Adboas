@@ -1,0 +1,532 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profiles with roles within the church",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "pastor", "pastora", "leader", "obreiro", "presbítero", "missionário", "missionária", "diácono", "evangelista", "diaconisa", "mídia social", "membro"] },
+        "departmentId": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "role", "email"]
+    },
+    "Department": {
+      "title": "Church Department",
+      "description": "Organizational departments of the church",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "leader": { "type": "string" },
+        "description": { "type": "string" },
+        "meetingDay": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name"]
+    },
+    "Report": {
+      "title": "Monthly Report",
+      "description": "Monthly activity reports from departments or pastoral",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["pastoral", "department", "spiritual", "construction"] },
+        "departmentId": { "type": "string" },
+        "departmentName": { "type": "string" },
+        "month": { "type": "number" },
+        "year": { "type": "number" },
+        "content": { "type": "string" },
+        "nextMonthProjection": { "type": "string" },
+        "positives": { "type": "string" },
+        "negatives": { "type": "string" },
+        "difficulties": { "type": "string" },
+        "testimonies": { "type": "string" },
+        "needs": { "type": "string" },
+        "metrics": {
+          "type": "object",
+          "properties": {
+            "attendance": { "type": "number" },
+            "conversions": { "type": "number" },
+            "reconciliations": { "type": "number" },
+            "baptisms": { "type": "number" },
+            "servicesCount": { "type": "number" },
+            "visitsCount": { "type": "number" },
+            "peopleVisitedCount": { "type": "number" }
+          }
+        },
+        "enviadoById": { "type": "string" },
+        "enviadoByName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["draft", "enviado"] }
+      },
+      "required": ["type", "month", "year", "content", "enviadoById"]
+    },
+    "Transaction": {
+      "title": "Financial Transaction",
+      "description": "Income or expense record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["income", "expense"] },
+        "category": { "type": "string" },
+        "amount": { "type": "number" },
+        "personName": { "type": "string" },
+        "paymentMethod": { "type": "string", "enum": ["pix", "dinheiro", "outros"] },
+        "description": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "amount", "date"]
+    },
+    "Member": {
+      "title": "Church Member",
+      "description": "Full record of a church member",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "birthDate": { "type": "string", "format": "date" },
+        "department": { "type": "string" },
+        "position": { "type": "string", "enum": ["Membro", "Pastor", "Pastora", "Presbítero", "Missionária", "Missionário", "Diácono", "Evangelista"] },
+        "conversionDate": { "type": "string", "format": "date" },
+        "isBaptized": { "type": "boolean" },
+        "isSpiritBaptized": { "type": "boolean" },
+        "isTither": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["active", "inactive", "visitor"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name"]
+    },
+    "Event": {
+      "title": "Church Event",
+      "description": "Calendar events and appointments",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "time": { "type": "string" },
+        "location": { "type": "string" },
+        "category": { "type": "string", "enum": ["Cultos", "Reuniões", "Congressos", "Social"] },
+        "description": { "type": "string" }
+      },
+      "required": ["title", "date", "time", "location", "category"]
+    },
+    "ConstructionItem": {
+      "title": "Construction & Purchasing Item",
+      "description": "Materials or services bought for construction or maintenance",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "quantity": { "type": "number" },
+        "unit": { "type": "string" },
+        "unitPrice": { "type": "number" },
+        "totalPrice": { "type": "number" },
+        "category": { "type": "string", "enum": ["Material de Construção", "Mão de Obra", "Mobília", "Equipamentos", "Outros"] },
+        "date": { "type": "string", "format": "date" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "totalPrice", "date"]
+    },
+    "Asset": {
+      "title": "Church Asset",
+      "description": "Church inventory items like chairs, tables, instruments",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "quantity": { "type": "number" },
+        "condition": { "type": "string", "enum": ["Novo", "Bom", "Regular", "Precisa de Manutenção", "Danificado"] },
+        "location": { "type": "string" },
+        "lastInventoryDate": { "type": "string", "format": "date" }
+      },
+      "required": ["name", "quantity"]
+    },
+    "Worker": {
+      "title": "Church Worker/Leader",
+      "description": "Details of church leaders and ministry workers",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "category": { "type": "string" },
+        "border": { "type": "string" },
+        "ministryStartDate": { "type": "string", "format": "date" },
+        "isBaptizedInWater": { "type": "boolean" },
+        "isBaptizedInSpirit": { "type": "boolean" },
+        "isTither": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["active", "inactive"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "category", "whatsapp"]
+    },
+    "CultPhoto": {
+      "title": "Cult Photo",
+      "description": "Photos of church services and worship moments",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "uploadedById": { "type": "string" },
+        "uploadedByName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["imageUrl", "title", "date", "uploadedById"]
+    },
+    "FcmToken": {
+      "title": "FCM Token",
+      "description": "FCM device registration token for push notifications",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "token": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "token"]
+    },
+    "Notification": {
+      "title": "In-app and PWA notification",
+      "description": "Notification records for leaders and pastors about reports and updates",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "type": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderId": { "type": "string" },
+        "reportId": { "type": "string" },
+        "roles": { "type": "array", "items": { "type": "string" } },
+        "readBy": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "body", "createdAt"]
+    },
+    "PrayerRequest": {
+      "title": "Prayer Request",
+      "description": "Requests for prayer submitted by members or visitors",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "userId": { "type": "string" },
+        "content": { "type": "string" },
+        "phone": { "type": "string" },
+        "isAnonymous": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["pending", "praying", "answered"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["content", "userId", "name", "status"]
+    },
+    "Study": {
+      "title": "Bible Study or Teaching",
+      "description": "Devotional teachings or Bible studies uploaded by pastors/admins as PDFs or rich content for members to download",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "content": { "type": "string" },
+        "category": { "type": "string" },
+        "pdfUrl": { "type": "string" },
+        "fileBase64": { "type": "string" },
+        "fileName": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "description", "category", "authorId", "authorName"]
+    },
+    "Visitor": {
+      "title": "Visitor",
+      "description": "Visitor record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "observations": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "date"]
+    },
+    "UserNote": {
+      "title": "Personal User Note",
+      "description": "A personal note or devotional written by a user, accessible only to them",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "category"]
+    },
+    "VideoLink": {
+      "title": "Shared Video Link",
+      "description": "Video links from YouTube, Facebook, TikTok, Instagram uploaded by admins",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "url": { "type": "string" },
+        "platform": { "type": "string", "enum": ["youtube", "facebook", "tiktok", "instagram", "other"] },
+        "description": { "type": "string" },
+        "addedBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "url", "platform"]
+    },
+    "EBDClass": {
+      "title": "EBD Class",
+      "description": "A class in Sunday Bible School (EBD)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name"]
+    },
+    "EBDStudent": {
+      "title": "EBD Student",
+      "description": "A student in EBD",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "classId": { "type": "string" },
+        "className": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "classId"]
+    },
+    "EBDAttendance": {
+      "title": "EBD Attendance Report",
+      "description": "Sunday EBD Attendance and Offering Report",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "classId": { "type": "string" },
+        "className": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "presentStudents": { "type": "array", "items": { "type": "string" } },
+        "absentStudents": { "type": "array", "items": { "type": "object" } },
+        "totalPresent": { "type": "number" },
+        "totalAbsent": { "type": "number" },
+        "bibles": { "type": "number" },
+        "magazines": { "type": "number" },
+        "visitors": { "type": "number" },
+        "offering": { "type": "number" },
+        "positives": { "type": "string" },
+        "negatives": { "type": "string" },
+        "difficulties": { "type": "string" },
+        "testimonies": { "type": "string" },
+        "needs": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["classId", "date"]
+    },
+    "EBDMaterial": {
+      "title": "EBD Study Material",
+      "description": "EBD study or presentation material for classes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "classId": { "type": "string" },
+        "pdfUrl": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "classId"]
+    },
+    "BusinessListing": {
+      "title": "Empreendimento / Serviço",
+      "description": "Publicação de loja, venda, serviço ou profissional da igreja",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "type": { "type": "string" },
+        "description": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "ownerName": { "type": "string" },
+        "ownerPhoto": { "type": "string" },
+        "phone": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "instagram": { "type": "string" },
+        "address": { "type": "string" },
+        "photos": {
+          "type": "array",
+          "items": { "type": "string" },
+          "maxLength": 4
+        },
+        "status": { "type": "string", "enum": ["active", "inactive"] },
+        "rating": { "type": "number" },
+        "reviewCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "category", "type", "description", "ownerId", "ownerName"]
+    },
+    "BusinessReview": {
+      "title": "Depoimento e Avaliação do Empreendimento",
+      "description": "Depoimento e nota dados por um membro sobre um serviço ou empreendimento",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "businessId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userPhoto": { "type": "string" },
+        "rating": { "type": "number", "minimum": 1, "maximum": 5 },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["businessId", "userId", "userName", "rating", "comment"]
+    },
+    "VisitaCultoReport": {
+      "title": "Registro de Visita ou Culto Realizado",
+      "description": "Relatório de visitas pastorais, cultos nos lares e de evangelismo",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "type": { "type": "string", "enum": ["visita", "culto_lar", "evangelismo", "culto_oficial", "outro"] },
+        "date": { "type": "string" },
+        "location": { "type": "string" },
+        "attendeesCount": { "type": "number" },
+        "preacher": { "type": "string" },
+        "director": { "type": "string" },
+        "hasReconciliations": { "type": "boolean" },
+        "reconciliationsCount": { "type": "number" },
+        "reconciliationsDetails": { "type": "string" },
+        "hasConversions": { "type": "boolean" },
+        "conversionsCount": { "type": "number" },
+        "conversionsDetails": { "type": "string" },
+        "notes": { "type": "string" },
+        "registeredById": { "type": "string" },
+        "registeredByName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "type", "date", "attendeesCount", "preacher", "director"]
+    }
+  },
+  "firestore": {
+    "/visitas_cultos/{visitId}": {
+      "schema": "VisitaCultoReport",
+      "description": "Registro de visitas e cultos realizados"
+    },
+    "/businesses/{businessId}": {
+      "schema": "BusinessListing",
+      "description": "Directory of church member businesses and services"
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile data"
+    },
+    "/departments/{departmentId}": {
+      "schema": "Department",
+      "description": "List of available departments"
+    },
+    "/reports/{reportId}": {
+      "schema": "Report",
+      "description": "Monthly reports"
+    },
+    "/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Financial records"
+    },
+    "/events/{eventId}": {
+      "schema": "Event",
+      "description": "Church calendar"
+    },
+    "/members/{memberId}": {
+      "schema": "Member",
+      "description": "List of church members"
+    },
+    "/construction_items/{itemId}": {
+      "schema": "ConstructionItem",
+      "description": "Construction material and service records"
+    },
+    "/assets/{assetId}": {
+      "schema": "Asset",
+      "description": "Church inventory and furniture"
+    },
+    "/workers/{workerId}": {
+      "schema": "Worker",
+      "description": "Church ministry workers and leaders"
+    },
+    "/cult_photos/{photoId}": {
+      "schema": "CultPhoto",
+      "description": "Photos of worship services"
+    },
+    "/fcm_tokens/{tokenId}": {
+      "schema": "FcmToken",
+      "description": "FCM device push tokens"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "System and push notifications"
+    },
+    "/prayer_requests/{requestId}": {
+      "schema": "PrayerRequest",
+      "description": "Member and visitor prayer requests"
+    },
+    "/studies/{studyId}": {
+      "schema": "Study",
+      "description": "Bible studies and teaching documents/PDFs"
+    },
+    "/video_links/{linkId}": {
+      "schema": "VideoLink",
+      "description": "Shared video links from YouTube, Facebook, TikTok, etc."
+    },
+    "/visitantes/{visitorId}": {
+      "schema": "Visitor",
+      "description": "Visitor registrations"
+    },
+    "/user_notes/{noteId}": {
+      "schema": "UserNote",
+      "description": "Personal user notes and devocionals"
+    },
+    "/ebd_classes/{classId}": {
+      "schema": "EBDClass",
+      "description": "EBD Class registrations"
+    },
+    "/ebd_students/{studentId}": {
+      "schema": "EBDStudent",
+      "description": "EBD Student registrations"
+    },
+    "/ebd_attendance/{reportId}": {
+      "schema": "EBDAttendance",
+      "description": "Sunday EBD Attendance and Offering Reports"
+    },
+    "/ebd_materials/{materialId}": {
+      "schema": "EBDMaterial",
+      "description": "EBD Class materials"
+    }
+  }
+}
