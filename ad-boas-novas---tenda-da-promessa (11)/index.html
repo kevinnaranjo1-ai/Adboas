@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- iOS / Apple Web App Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Boas Novas" />
+    <link rel="apple-touch-icon" href="/logo.png" />
+    
+    <!-- Theme colors for browser frames -->
+    <meta name="theme-color" content="#1a365d" />
+    <meta name="msapplication-Navbutton-Color" content="#1a365d" />
+    
+    <title>AD Boas Novas - Tenda da Promessa</title>
+    
+    <!-- PWA Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('PWA Service Worker registrado com sucesso:', registration.scope);
+              
+              // Força verificação imediata por novas versões no servidor
+              registration.update();
+
+                // Verifica atualizações quando o aplicativo é aberto no celular (visibilitychange)
+                document.addEventListener('visibilitychange', () => {
+                  if (document.visibilityState === 'visible') {
+                    registration.update();
+                  }
+                });
+
+                // Recarrega a página suavemente quando o novo Service Worker assumir o controle (clients.claim)
+                let refreshing = false;
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                  if (!refreshing) {
+                    refreshing = true;
+                    console.log('Nova versão ativada. Recarregando aplicativo...');
+                    window.location.reload();
+                  }
+                });
+
+                // Detecta novas versões sendo instaladas em segundo plano
+                registration.onupdatefound = () => {
+                  const installingWorker = registration.installing;
+                  if (installingWorker) {
+                    installingWorker.onstatechange = () => {
+                      if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        console.log('Novo Service Worker instalado. Forçando ativação imediata...');
+                        installingWorker.postMessage({ type: 'SKIP_WAITING' });
+                      }
+                    };
+                  }
+                };
+              })
+              .catch((error) => {
+                console.error('Falha ao registrar PWA Service Worker:', error);
+              });
+          });
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
