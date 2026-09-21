@@ -1,0 +1,16 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@500;600;700&family=Dancing+Script:wght@600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", ui-serif, Georgia, serif;
+  --font-signature: "Dancing Script", cursive;
+  
+  --color-church-gold: #d4af37;
+  --color-church-navy: #1a365d;
+  --color-church-cream: #ebf4ff;
+}
+
+body {
+  @apply bg-church-cream text-church-navy font-sans;
+}

@@ -1,0 +1,35 @@
+{
+  "id": "/",
+  "short_name": "Boas Novas",
+  "name": "AD Boas Novas - Tenda da Promessa",
+  "description": "Aplicativo oficial da AD Boas Novas - Tenda da Promessa. Acompanhe a Bíblia Sagrada, Harpa Cristã, cultos, eventos, departamentos e faça a gestão de membros.",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#1a365d",
+  "theme_color": "#1a365d",
+  "display": "standalone",
+  "orientation": "portrait",
+  "categories": ["social", "utilities"],
+  "screenshots": [
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Painel Principal"
+    }
+  ]
+}

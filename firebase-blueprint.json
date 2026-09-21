@@ -433,9 +433,37 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["title", "type", "date", "attendeesCount", "preacher", "director"]
+    },
+    "ServingSchedule": {
+      "title": "Escala de Servidores & Ministérios",
+      "description": "Escalas de voluntários e obreiros por culto e ministério com confirmação e solicitação de troca",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "ministry": { "type": "string" },
+        "serviceType": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "location": { "type": "string" },
+        "notes": { "type": "string" },
+        "slots": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "createdById": { "type": "string" },
+        "createdByName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "ministry", "date", "createdById"]
     }
   },
   "firestore": {
+    "/schedules/{scheduleId}": {
+      "schema": "ServingSchedule",
+      "description": "Escalas de voluntários e obreiros por culto"
+    },
     "/visitas_cultos/{visitId}": {
       "schema": "VisitaCultoReport",
       "description": "Registro de visitas e cultos realizados"
@@ -527,6 +555,18 @@
     "/ebd_materials/{materialId}": {
       "schema": "EBDMaterial",
       "description": "EBD Class materials"
+    },
+    "/quizzes/{quizId}": {
+      "schema": "Quiz",
+      "description": "Weekly Bible & Sermon Quizzes"
+    },
+    "/quiz_responses/{responseId}": {
+      "schema": "QuizResponse",
+      "description": "User responses and scores for weekly quizzes"
+    },
+    "/quiz_leaderboard/{userId}": {
+      "schema": "QuizLeaderboard",
+      "description": "Church-wide Bible quiz leaderboard and rankings"
     }
   }
 }

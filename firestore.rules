@@ -162,6 +162,13 @@ service cloud.firestore {
       allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
+    // --- Push Subscriptions (Web Push / Background PWA notifications) ---
+    match /push_subscriptions/{subscriptionId} {
+      allow read: if isSignedIn() && (isAdmin() || isPastorAdmin() || resource.data.userId == request.auth.uid);
+      allow create, update: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin() || isPastorAdmin());
+    }
+
     // --- Notifications ---
     match /notifications/{notificationId} {
       allow read: if isSignedIn();
@@ -246,6 +253,12 @@ service cloud.firestore {
       allow update, delete: if isSignedIn() && (resource.data.registeredById == request.auth.uid || isAdmin());
     }
 
+    // --- Escalas de Servidores & Ministérios ---
+    match /schedules/{scheduleId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
+    }
+
     // --- Businesses & Services (Empreendimentos) ---
     match /businesses/{businessId} {
       allow read: if isSignedIn();
@@ -258,6 +271,22 @@ service cloud.firestore {
         allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
         allow update, delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       }
+    }
+
+    // --- Quizzes & Ranking ---
+    match /quizzes/{quizId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
+    }
+
+    match /quiz_responses/{responseId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
+    }
+
+    match /quiz_leaderboard/{userId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
     }
   }
 }

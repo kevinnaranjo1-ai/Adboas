@@ -21,36 +21,13 @@
     <!-- PWA Service Worker Registration -->
     <script>
       if ('serviceWorker' in navigator) {
-        // Verifica se é o ambiente de desenvolvimento
-        const isDev = window.location.hostname.includes('ais-dev') || window.location.hostname.includes('localhost');
-        
-        if (isDev) {
-          // Se for desenvolvimento, desativa e limpa os service workers e caches para garantir que as alterações apareçam na hora
-          navigator.serviceWorker.getRegistrations().then((registrations) => {
-            for (let registration of registrations) {
-              registration.unregister().then((success) => {
-                if (success) console.log('Service worker antigo removido no ambiente de desenvolvimento.');
-              });
-            }
-          });
-          
-          // Limpa caches antigos do navegador
-          if ('caches' in window) {
-            caches.keys().then((names) => {
-              for (let name of names) {
-                caches.delete(name);
-              }
-            });
-          }
-        } else {
-          // Se for produção/preview compartilhado, registra o Service Worker e gerencia atualizações automáticas
-          window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js')
-              .then((registration) => {
-                console.log('PWA Service Worker registrado com sucesso:', registration.scope);
-                
-                // Força verificação imediata por novas versões no servidor
-                registration.update();
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('PWA Service Worker registrado com sucesso:', registration.scope);
+              
+              // Força verificação imediata por novas versões no servidor
+              registration.update();
 
                 // Verifica atualizações quando o aplicativo é aberto no celular (visibilitychange)
                 document.addEventListener('visibilitychange', () => {
