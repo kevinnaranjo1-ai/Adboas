@@ -93,7 +93,7 @@ interface CultPhotosProps {
 
 export default function CultPhotosGallery({ role }: CultPhotosProps) {
   const [user, loadingAuth] = useAuthState(auth);
-  const isAdminOrOfficer = role && ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'mídia social'].includes(role);
+  const isAdminOrOfficer = role && ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social'].includes(role);
 
   // Firestore subscription for photos query
   const photosQuery = query(collection(db, 'cult_photos'), orderBy('date', 'desc'));

@@ -14,40 +14,86 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Intercepta mensagens de push em segundo plano
+// 1. Intercepta mensagens de push padrão W3C (Web Push nativo para celular/desktop fechado)
+self.addEventListener('push', (event) => {
+  console.log('[sw.js] Evento push recebido em segundo plano:', event);
+  
+  let payload = {};
+  if (event.data) {
+    try {
+      payload = event.data.json();
+    } catch (e) {
+      payload = { title: 'AD Boas Novas', body: event.data.text() };
+    }
+  }
+
+  const title = payload.title || payload.notification?.title || 'AD Boas Novas - Tenda da Promessa';
+  const body = payload.body || payload.notification?.body || 'Você recebeu um novo aviso da igreja.';
+  const icon = payload.icon || '/logo.png';
+  const badge = payload.badge || '/logo.png';
+  const targetUrl = payload.url || payload.data?.url || '/';
+  const tag = payload.tag || payload.data?.tag || `push-${Date.now()}`;
+
+  const notificationOptions = {
+    body,
+    icon,
+    badge,
+    tag,
+    data: {
+      url: targetUrl,
+      id: payload.id || payload.data?.id
+    },
+    vibrate: [300, 150, 300],
+    requireInteraction: true,
+    actions: [
+      { action: 'open', title: 'Abrir Aplicativo' }
+    ]
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(title, notificationOptions)
+  );
+});
+
+// 2. Intercepta mensagens de push via Firebase Cloud Messaging (FCM)
 messaging.onBackgroundMessage((payload) => {
   console.log('[sw.js] Mensagem recebida em segundo plano (FCM):', payload);
   
-  const notificationTitle = payload.notification?.title || 'Novo Relatório Enviado';
+  const notificationTitle = payload.notification?.title || 'Novo Aviso da Igreja';
   const notificationOptions = {
-    body: payload.notification?.body || 'Um novo relatório foi enviado por um líder de departamento.',
+    body: payload.notification?.body || 'A igreja enviou um novo comunicado ou lembrete.',
     icon: '/logo.png',
     badge: '/logo.png',
-    tag: payload.data?.reportId || 'new-report',
+    tag: payload.data?.reportId || payload.data?.tag || `fcm-${Date.now()}`,
     data: {
       url: payload.data?.url || '/',
       reportId: payload.data?.reportId
     },
-    vibrate: [200, 100, 200]
+    vibrate: [300, 150, 300],
+    requireInteraction: true
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-// Listener de cliques em notificações para abrir a rota correspondente
+// 3. Listener de cliques em notificações para abrir o app diretamente na tela do aviso
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const targetUrl = event.notification.data?.url || '/';
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // Se houver janela aberta, navega até ela
+      // Se já houver janela da igreja aberta, foca nela e navega se necessário
       for (const client of clientList) {
-        if (client.url.includes(targetUrl) && 'focus' in client) {
-          return client.focus();
+        if ('focus' in client) {
+          client.focus();
+          if ('navigate' in client && client.url !== targetUrl) {
+            client.navigate(targetUrl);
+          }
+          return;
         }
       }
-      // Se nenhuma estiver com foco, abre nova aba
+      // Se o app estiver fechado, abre a janela no link indicado
       if (clients.openWindow) {
         return clients.openWindow(targetUrl);
       }

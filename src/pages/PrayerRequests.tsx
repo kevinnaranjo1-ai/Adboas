@@ -61,7 +61,7 @@ export default function PrayerRequests({ role }: { role: string | null }) {
   const isLeadershipUser = role && [
     'admin', 'pastor', 'pastora', 'leader', 'obreiro', 
     'presbítero', 'missionário', 'missionária', 'diácono', 
-    'evangelista', 'diaconisa', 'mídia social'
+    'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social'
   ].includes(role);
 
   // Fetch Prayer Requests

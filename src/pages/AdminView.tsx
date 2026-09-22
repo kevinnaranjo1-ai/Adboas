@@ -344,6 +344,10 @@ export default function AdminView({ role }: AdminViewProps) {
       diácono: 'Diácono',
       evangelista: 'Evangelista',
       diaconisa: 'Diaconisa',
+      secretária: 'Secretária',
+      tesoureira: 'Tesoureira',
+      'porteiro zelador': 'Porteiro Zelador',
+      apoio: 'Apoio',
       'mídia social': 'Mídia social',
       membro: 'Membro'
     };
@@ -667,6 +671,10 @@ export default function AdminView({ role }: AdminViewProps) {
                         >
                           <option value="membro">Membro</option>
                           <option value="leader">Líder</option>
+                          <option value="secretária">Secretária</option>
+                          <option value="tesoureira">Tesoureira</option>
+                          <option value="porteiro zelador">Porteiro Zelador</option>
+                          <option value="apoio">Apoio</option>
                           <option value="obreiro">Obreiro</option>
                           <option value="diácono">Diácono</option>
                           <option value="diaconisa">Diaconisa</option>

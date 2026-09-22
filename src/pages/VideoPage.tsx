@@ -25,7 +25,7 @@ interface VideoLinkItem {
 
 export default function VideoPage({ role }: VideoPageProps) {
   const [user] = useAuthState(auth);
-  const isAdmin = role && ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'mídia social'].includes(role);
+  const isAdmin = role && ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social'].includes(role);
   const { startPlaying } = useMiniPlayer();
 
   const linksQuery = query(collection(db, 'video_links'), orderBy('createdAt', 'desc'));

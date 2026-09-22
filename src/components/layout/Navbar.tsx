@@ -13,8 +13,8 @@ interface NavbarProps {
 }
 
 export default function Navbar({ user, role, onMenuClick, showMenuButton }: NavbarProps) {
-  const isAdmin = role && ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'mídia social'].includes(role);
-  const hasSidebar = role && ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'mídia social', 'membro'].includes(role);
+  const isAdmin = role && ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social'].includes(role);
+  const hasSidebar = role && ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social', 'membro'].includes(role);
 
   const getRoleLabel = (r: string | null) => {
     if (!r) return '';
@@ -30,6 +30,10 @@ export default function Navbar({ user, role, onMenuClick, showMenuButton }: Navb
       diácono: 'Diácono',
       evangelista: 'Evangelista',
       diaconisa: 'Diaconisa',
+      secretária: 'Secretária',
+      tesoureira: 'Tesoureira',
+      'porteiro zelador': 'Porteiro Zelador',
+      apoio: 'Apoio',
       'mídia social': 'Mídia social',
       membro: 'Membro'
     };

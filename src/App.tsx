@@ -27,9 +27,11 @@ import PrayerRequests from './pages/PrayerRequests';
 import Studies from './pages/Studies';
 import Notes from './pages/Notes';
 import Businesses from './pages/Businesses';
+import BibleQuizPage from './pages/BibleQuizPage';
 import VisitorManagement from './pages/admin/VisitorManagement';
 import ChildPresentationManagement from './pages/admin/ChildPresentationManagement';
 import ServiceVisitsManagement from './pages/admin/ServiceVisitsManagement';
+import SchedulesPage from './pages/Schedules';
 import { Loader2, MessageCircle } from 'lucide-react';
 import { requestNotificationPermission, createNewMemberNotification, checkAndSendBirthdayNotifications } from './lib/notifications';
 import { MiniPlayerProvider } from './context/MiniPlayerContext';
@@ -134,9 +136,9 @@ export default function App() {
     );
   }
 
-  const isAdmin = userRole && ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'mídia social'].includes(userRole.toLowerCase());
+  const isAdmin = userRole && ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social'].includes(userRole.toLowerCase());
   const isPastorAdmin = userRole && ['admin', 'pastor', 'pastora'].includes(userRole.toLowerCase());
-  const showSidebar = userRole && ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'mídia social', 'membro'].includes(userRole.toLowerCase());
+  const showSidebar = userRole && ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social', 'membro'].includes(userRole.toLowerCase());
 
   return (
     <MiniPlayerProvider>
@@ -217,6 +219,10 @@ export default function App() {
                 path="/empreendimentos" 
                 element={user ? <Businesses role={userRole} /> : <Navigate to="/login" />} 
               />
+              <Route 
+                path="/quiz" 
+                element={user ? <BibleQuizPage role={userRole} /> : <Navigate to="/login" />} 
+              />
               
               {/* Rotas Administrativas */}
               <Route 
@@ -258,6 +264,14 @@ export default function App() {
               <Route 
                 path="/admin/agenda" 
                 element={user ? <CalendarPage role={userRole} /> : <Navigate to="/login" />} 
+              />
+              <Route 
+                path="/admin/escalas" 
+                element={user ? <SchedulesPage role={userRole} /> : <Navigate to="/login" />} 
+              />
+              <Route 
+                path="/escalas" 
+                element={user ? <SchedulesPage role={userRole} /> : <Navigate to="/login" />} 
               />
               
               <Route 

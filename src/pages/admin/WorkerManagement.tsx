@@ -375,7 +375,12 @@ export default function WorkerManagement({ role }: WorkerManagementProps) {
                       <option value="Missionária">Missionária</option>
                       <option value="Presbítero">Presbítero</option>
                       <option value="Diácono">Diácono</option>
+                      <option value="Diaconisa">Diaconisa</option>
                       <option value="Obreiro">Obreiro</option>
+                      <option value="Secretária">Secretária</option>
+                      <option value="Tesoureira">Tesoureira</option>
+                      <option value="Porteiro Zelador">Porteiro Zelador</option>
+                      <option value="Apoio">Apoio</option>
                       <option value="Auxiliar">Auxiliar</option>
                     </select>
                   </div>

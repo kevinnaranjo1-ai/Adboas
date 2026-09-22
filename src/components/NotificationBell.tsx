@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bell, Check, CheckSquare, MailOpen, Calendar, HelpCircle, Trash2 } from 'lucide-react';
+import { Bell, Check, CheckSquare, MailOpen, Calendar, HelpCircle, Trash2, Smartphone, BellRing } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { db } from '../lib/firebase';
+import { db, auth } from '../lib/firebase';
 import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, arrayUnion, writeBatch } from 'firebase/firestore';
 import { sendSystemNotification } from '../lib/notifications';
+import { isPushSupported, getExistingPushSubscription, subscribeToPush } from '../lib/pushSubscription';
 
 interface NotificationBellProps {
   userId: string;
@@ -30,11 +31,42 @@ interface AppNotification {
 export default function NotificationBell({ userId, userRole }: NotificationBellProps) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [isPushActive, setIsPushActive] = useState<boolean>(true);
+  const [activatingPush, setActivatingPush] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
   const isInitialLoad = useRef(true);
   const notificationsRef = useRef<AppNotification[]>([]);
+
+  // Verifica status do push no aparelho
+  useEffect(() => {
+    async function checkPush() {
+      if (isPushSupported()) {
+        const sub = await getExistingPushSubscription();
+        setIsPushActive(!!sub);
+      }
+    }
+    checkPush();
+  }, []);
+
+  const handleActivatePush = async () => {
+    setActivatingPush(true);
+    try {
+      const curUser = auth.currentUser;
+      const res = await subscribeToPush({
+        user: curUser,
+        role: userRole || 'membro'
+      });
+      if (res.success) {
+        setIsPushActive(true);
+      }
+    } catch (err) {
+      console.warn('Erro ao ativar push no sino:', err);
+    } finally {
+      setActivatingPush(false);
+    }
+  };
 
   // Fecha o dropdown ao clicar fora
   useEffect(() => {
@@ -228,6 +260,31 @@ export default function NotificationBell({ userId, userRole }: NotificationBellP
               )}
             </div>
           </header>
+
+          {/* Banner de Ativação Push em Segundo Plano (se não ativo) */}
+          {!isPushActive && (
+            <div className="bg-gradient-to-r from-indigo-50 to-amber-50 border-b border-indigo-100 p-3 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <BellRing className="w-4 h-4 text-indigo-600 shrink-0 animate-bounce" />
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold text-slate-800 truncate">
+                    Receber com app fechado
+                  </p>
+                  <p className="text-[10px] text-slate-500 truncate">
+                    Não perca avisos de cultos e orações
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleActivatePush}
+                disabled={activatingPush}
+                className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shrink-0 cursor-pointer disabled:opacity-50"
+              >
+                {activatingPush ? 'Ativando...' : 'Ativar'}
+              </button>
+            </div>
+          )}
 
           <div className="overflow-y-auto flex-1 divide-y divide-church-gold/5">
             {notifications.length === 0 ? (

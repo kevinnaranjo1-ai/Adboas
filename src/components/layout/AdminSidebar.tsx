@@ -4,7 +4,7 @@ import {
   LayoutDashboard, DollarSign, Users, Shield, 
   Heart, BookOpen, FileText, Hammer, 
   Calendar, X, Camera, Download, Share2, Check, User, Music, Instagram, ClipboardList,
-  Smartphone, Share, Plus, MoreVertical, Youtube, Baby, Store, RefreshCw
+  Smartphone, Share, Plus, MoreVertical, Youtube, Baby, Store, RefreshCw, Brain
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Logo from '../Logo';
@@ -134,31 +134,33 @@ export default function AdminSidebar({ role, onClose }: SidebarProps) {
 
 
   const menuItems = [
-    { icon: LayoutDashboard, label: 'Início', path: '/', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'mídia social', 'membro'] },
-    { icon: User, label: 'Meu Perfil', path: '/perfil', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'mídia social', 'membro'] },
-    { icon: BookOpen, label: 'Bíblia Sagrada', path: '/biblia', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'mídia social', 'membro'] },
-    { icon: Music, label: 'Harpa Cristã', path: '/harpa', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'mídia social', 'membro'] },
-    { icon: Youtube, label: 'Vídeos e Transmissões', path: '/videos', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'mídia social', 'membro'] },
-    { icon: Heart, label: 'Pedidos de Oração', path: '/oracao', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'mídia social', 'membro'] },
-    { icon: BookOpen, label: 'Estudos e Ensinos', path: '/estudos', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'mídia social', 'membro'] },
-    { icon: FileText, label: 'Minhas Anotações', path: '/anotacoes', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'mídia social', 'membro'] },
-    { icon: Store, label: 'Empreendimentos & Serviços', path: '/empreendimentos', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'mídia social', 'membro'] },
-    { icon: Shield, label: 'Painel Admin', path: '/admin', roles: ['admin', 'pastor', 'pastora'] },
-    { icon: DollarSign, label: 'Financeiro', path: '/admin/financeiro', roles: ['admin', 'pastor', 'pastora'] },
-    { icon: Users, label: 'Membros', path: '/admin/membros', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'mídia social', 'membro'] },
-    { icon: Users, label: 'Visitantes', path: '/admin/visitantes', roles: ['admin', 'pastor', 'pastora', 'leader', 'diácono', 'obreiro'] },
-    { icon: ClipboardList, label: 'Visitas & Cultos Realizados', path: '/admin/visitas-cultos', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'mídia social', 'membro'] },
-    { icon: Baby, label: 'Apresentação Crianças', path: '/admin/apresentacao-criancas', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'mídia social'] },
-    { icon: ClipboardList, label: 'Frequência de Cultos', path: '/admin/presenca', roles: ['admin', 'pastor', 'pastora'] },
-    { icon: BookOpen, label: 'EBD', path: '/admin/ebd', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'mídia social'] },
-    { icon: Shield, label: 'Obreiros', path: '/admin/obreiros', roles: ['admin', 'pastor', 'pastora'] },
-    { icon: Heart, label: 'Relatório Espiritual', path: '/admin/espiritual', roles: ['admin', 'pastor', 'pastora'] },
-    { icon: BookOpen, label: 'Departamentos', path: '/admin/departamentos', roles: ['admin', 'pastor', 'pastora'] },
-    { icon: FileText, label: 'Relatório Pastoral', path: '/admin/pastoral', roles: ['admin', 'pastor', 'pastora'] },
-    { icon: Hammer, label: 'Construção/Compras', path: '/admin/construcao', roles: ['admin', 'pastor', 'pastora'] },
-    { icon: Calendar, label: 'Agenda', path: '/admin/agenda', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'mídia social', 'membro'] },
-    { icon: Camera, label: 'Galeria de Fotos', path: '/admin/galeria', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'mídia social', 'membro'] },
-    { icon: Smartphone, label: 'Notificações & Avisos', path: '/admin/avisos', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'mídia social'] },
+    { icon: LayoutDashboard, label: 'Início', path: '/', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social', 'membro'] },
+    { icon: User, label: 'Meu Perfil', path: '/perfil', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social', 'membro'] },
+    { icon: BookOpen, label: 'Bíblia Sagrada', path: '/biblia', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social', 'membro'] },
+    { icon: Brain, label: 'Quiz Bíblico & Ranking', path: '/quiz', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social', 'membro'] },
+    { icon: Music, label: 'Harpa Cristã', path: '/harpa', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social', 'membro'] },
+    { icon: Youtube, label: 'Vídeos e Transmissões', path: '/videos', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social', 'membro'] },
+    { icon: Heart, label: 'Pedidos de Oração', path: '/oracao', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social', 'membro'] },
+    { icon: BookOpen, label: 'Estudos e Ensinos', path: '/estudos', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social', 'membro'] },
+    { icon: FileText, label: 'Minhas Anotações', path: '/anotacoes', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social', 'membro'] },
+    { icon: Store, label: 'Empreendimentos & Serviços', path: '/empreendimentos', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social', 'membro'] },
+    { icon: Shield, label: 'Painel Admin', path: '/admin', roles: ['admin', 'pastor', 'pastora', 'secretária'] },
+    { icon: DollarSign, label: 'Financeiro', path: '/admin/financeiro', roles: ['admin', 'pastor', 'pastora', 'tesoureira'] },
+    { icon: Users, label: 'Membros', path: '/admin/membros', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social', 'membro'] },
+    { icon: Users, label: 'Visitantes', path: '/admin/visitantes', roles: ['admin', 'pastor', 'pastora', 'leader', 'diácono', 'obreiro', 'secretária', 'apoio', 'porteiro zelador'] },
+    { icon: ClipboardList, label: 'Visitas & Cultos Realizados', path: '/admin/visitas-cultos', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social', 'membro'] },
+    { icon: Baby, label: 'Apresentação Crianças', path: '/admin/apresentacao-criancas', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social'] },
+    { icon: ClipboardList, label: 'Frequência de Cultos', path: '/admin/presenca', roles: ['admin', 'pastor', 'pastora', 'secretária', 'porteiro zelador', 'apoio'] },
+    { icon: BookOpen, label: 'EBD', path: '/admin/ebd', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social'] },
+    { icon: Shield, label: 'Obreiros', path: '/admin/obreiros', roles: ['admin', 'pastor', 'pastora', 'secretária'] },
+    { icon: Heart, label: 'Relatório Espiritual', path: '/admin/espiritual', roles: ['admin', 'pastor', 'pastora', 'secretária'] },
+    { icon: BookOpen, label: 'Departamentos', path: '/admin/departamentos', roles: ['admin', 'pastor', 'pastora', 'secretária'] },
+    { icon: FileText, label: 'Relatório Pastoral', path: '/admin/pastoral', roles: ['admin', 'pastor', 'pastora', 'secretária'] },
+    { icon: Hammer, label: 'Construção/Compras', path: '/admin/construcao', roles: ['admin', 'pastor', 'pastora', 'tesoureira', 'secretária'] },
+    { icon: Calendar, label: 'Agenda da Igreja', path: '/admin/agenda', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social', 'membro'] },
+    { icon: ClipboardList, label: 'Escala de Servidores', path: '/admin/escalas', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social', 'membro'] },
+    { icon: Camera, label: 'Galeria de Fotos', path: '/admin/galeria', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social', 'membro'] },
+    { icon: Smartphone, label: 'Notificações & Avisos', path: '/admin/avisos', roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social'] },
   ];
 
   if (!showSidebar) return null;
@@ -232,10 +234,10 @@ export default function AdminSidebar({ role, onClose }: SidebarProps) {
         <button
           onClick={handleForceUpdateApp}
           className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 hover:text-amber-200 py-2.5 px-4 text-xs font-bold border border-amber-500/20 transition-all active:scale-95 cursor-pointer"
-          title="Forçar atualização e limpar cache do celular"
+          title="Forçar atualização do aplicativo"
         >
           <RefreshCw className="h-4 w-4 shrink-0" />
-          <span>Atualizar Versão (Limpar Cache)</span>
+          <span>Atualizar Versão</span>
         </button>
 
         <a

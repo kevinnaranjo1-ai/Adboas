@@ -10,6 +10,7 @@ import { doc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { format } from 'date-fns';
 import Logo from './Logo';
+import { isNonMemberPosition, getCardTitle } from '../lib/utils';
 
 interface Member {
   id: string;
@@ -21,6 +22,7 @@ interface Member {
   birthDate?: string;
   department?: string;
   position?: string;
+  role?: string;
   conversionDate?: string;
   isBaptized: boolean;
   isSpiritBaptized: boolean;
@@ -69,6 +71,9 @@ export default function MemberIDCardModal({
 
   // Generate a mock registration number based on ID and date
   const registrationNumber = `ADBN-${member.id.substring(0, 5).toUpperCase()}`;
+
+  const isNonMember = isNonMemberPosition(member.position, member.role);
+  const cardTitle = getCardTitle(member.position, member.role);
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -178,7 +183,7 @@ export default function MemberIDCardModal({
     const frontCard = document.getElementById('id-card-front');
     const backCard = document.getElementById('id-card-back');
     if (!frontCard || !backCard) {
-      setErrorMsg('Não foi possível encontrar os elementos da carteira para exportar.');
+      setErrorMsg(`Não foi possível encontrar os elementos da ${isNonMember ? 'credencial' : 'carteira'} para exportar.`);
       return;
     }
 
@@ -369,7 +374,7 @@ export default function MemberIDCardModal({
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(9);
       pdf.setTextColor(26, 54, 93);
-      pdf.text('Instruções para Confecção da Carteira Física:', 105, 160, { align: 'center' });
+      pdf.text(`Instruções para Confecção da ${cardTitle} Física:`, 105, 160, { align: 'center' });
 
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(8);
@@ -396,10 +401,10 @@ export default function MemberIDCardModal({
       pdf.setFont('helvetica', 'italic');
       pdf.setFontSize(8);
       pdf.setTextColor(160, 174, 192);
-      pdf.text(`Documento gerado para: ${member.name} - ADBN-Membro`, 105, currentY + 9, { align: 'center' });
+      pdf.text(`Documento gerado para: ${member.name} - ADBN-${isNonMember ? 'Credencial' : 'Membro'}`, 105, currentY + 9, { align: 'center' });
 
       // Save PDF
-      const fileName = `carteira_${member.name.toLowerCase().replace(/\s+/g, '_')}.pdf`;
+      const fileName = `${isNonMember ? 'credencial' : 'carteira'}_${member.name.toLowerCase().replace(/\s+/g, '_')}.pdf`;
       pdf.save(fileName);
     } catch (err: any) {
       console.error('Error generating PDF:', err);
@@ -437,7 +442,7 @@ export default function MemberIDCardModal({
               <Shield className="h-6 w-6" />
             </div>
             <div>
-              <h3 className="font-serif text-xl font-bold">Carteira de Membro</h3>
+              <h3 className="font-serif text-xl font-bold">{cardTitle}</h3>
               <p className="text-xs text-church-gold/60 uppercase tracking-widest font-extrabold">AD Boas Novas</p>
             </div>
           </div>
@@ -457,9 +462,9 @@ export default function MemberIDCardModal({
             <div className="w-full max-w-xl bg-church-gold/5 border border-church-gold/20 rounded-2xl p-4 text-xs text-church-navy flex items-start gap-3">
               <Sparkles className="h-4 w-4 text-church-gold shrink-0 mt-0.5" />
               <div>
-                <p className="font-bold mb-1">Personalize sua Credencial!</p>
+                <p className="font-bold mb-1">Personalize sua {cardTitle}!</p>
                 <p className="text-church-navy/70">
-                  Clique na foto da carteira abaixo para carregar uma foto diretamente do seu dispositivo. 
+                  Clique na foto da {isNonMember ? 'credencial' : 'carteira'} abaixo para carregar uma foto diretamente do seu dispositivo. 
                   O sistema irá cortar e comprimir a foto automaticamente no tamanho oficial de retrato.
                 </p>
               </div>
@@ -516,7 +521,7 @@ export default function MemberIDCardModal({
               {/* Title label */}
               <div className="flex justify-center my-1.5">
                 <span className="bg-church-gold/10 border border-church-gold/30 text-church-gold px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">
-                  Carteira de Membro
+                  {cardTitle}
                 </span>
               </div>
 

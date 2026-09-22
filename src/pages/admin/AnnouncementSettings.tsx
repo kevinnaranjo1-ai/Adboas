@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
+import { PushNotificationCard } from '../../components/notifications/PushNotificationCard';
 
 interface SegmentGroup {
   id: string;
@@ -46,7 +47,7 @@ const SEGMENT_GROUPS: SegmentGroup[] = [
     id: 'todos',
     name: 'Todos os Membros',
     description: 'Envia para toda a comunidade da igreja sem exceção',
-    roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'mídia social', 'membro'],
+    roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social', 'membro'],
     icon: Users,
     color: 'from-amber-500 to-orange-600',
     badgeBg: 'bg-amber-100',
@@ -101,7 +102,7 @@ const SEGMENT_GROUPS: SegmentGroup[] = [
     id: 'obreiros',
     name: 'Corpo de Obreiros & Líderes',
     description: 'Diáconos, diaconisas, presbíteros, evangelistas e missionários',
-    roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa'],
+    roles: ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio'],
     icon: Shield,
     color: 'from-slate-700 to-slate-900',
     badgeBg: 'bg-slate-100',
@@ -159,6 +160,7 @@ export default function AnnouncementSettings() {
   const [targetUrl, setTargetUrl] = useState<string>('/admin/agenda');
   const [sendingPush, setSendingPush] = useState(false);
   const [pushSuccessToast, setPushSuccessToast] = useState(false);
+  const [subscribersCount, setSubscribersCount] = useState<number>(0);
 
   // History state
   const [history, setHistory] = useState<NotificationHistoryItem[]>([]);
@@ -176,7 +178,17 @@ export default function AnnouncementSettings() {
   useEffect(() => {
     loadBannerAnnouncement();
     loadNotificationHistory();
+    loadSubscribersCount();
   }, []);
+
+  const loadSubscribersCount = async () => {
+    try {
+      const snap = await getDocs(collection(db, 'push_subscriptions'));
+      setSubscribersCount(snap.size);
+    } catch (err) {
+      console.warn('Erro ao buscar inscritos push:', err);
+    }
+  };
 
   const loadBannerAnnouncement = async () => {
     try {
@@ -544,6 +556,19 @@ export default function AnnouncementSettings() {
                 </select>
               </div>
 
+              {/* Status de Aparelhos Conectados */}
+              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 flex items-center justify-between text-xs text-emerald-900">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                  <span>
+                    <strong>{subscribersCount} aparelho{subscribersCount !== 1 ? 's' : ''}</strong> cadastrado{subscribersCount !== 1 ? 's' : ''} para receber notificações com app fechado
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-200/60 px-2 py-0.5 rounded-md text-emerald-800">
+                  FCM / WebPush
+                </span>
+              </div>
+
               {/* Botão Enviar */}
               <button
                 type="submit"
@@ -614,13 +639,16 @@ export default function AnnouncementSettings() {
               <div className="bg-slate-800/60 p-3.5 rounded-2xl text-[11px] text-slate-300 space-y-1 border border-slate-700/50">
                 <p className="font-bold text-white flex items-center gap-1.5">
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                  <span>Entrega em Tempo Real</span>
+                  <span>Entrega mesmo com Aplicativo Fechado</span>
                 </p>
                 <p className="text-slate-400">
-                  Ao disparar, todos os membros com o aplicativo aberto ou cadastrados no grupo receberão o alerta instantaneamente na barra do topo.
+                  Os membros com notificações ativadas receberão este aviso com som e vibração na tela de bloqueio do celular, sem precisar estar com o aplicativo aberto.
                 </p>
               </div>
             </div>
+
+            {/* Teste Push no Aparelho do Administrador / Pastor */}
+            <PushNotificationCard currentUser={currentUser} userRole="admin" />
           </div>
         </div>
       )}

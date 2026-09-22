@@ -16,6 +16,7 @@ import MemberIDCardModal from '../../components/MemberIDCardModal';
 import SignatureCanvas from '../../components/SignatureCanvas';
 import { createNewMemberNotification } from '../../lib/notifications';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
+import { isNonMemberPosition } from '../../lib/utils';
 
 interface Member {
   id: string;
@@ -77,7 +78,7 @@ export default function MemberManagement({ role }: MemberManagementProps) {
   }, [role, user]);
 
   const canManageMembers = useMemo(() => {
-    return (role && ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'mídia social', 'membro'].includes(role)) || 
+    return (role && ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social', 'membro'].includes(role)) || 
            user?.email?.toLowerCase() === 'kevinnaranjo1@gmail.com';
   }, [role, user]);
 
@@ -334,7 +335,7 @@ export default function MemberManagement({ role }: MemberManagementProps) {
                     <button 
                       onClick={() => setSelectedMemberForCard(member)}
                       className="flex h-14 w-14 items-center justify-center rounded-2xl border border-church-gold/10 bg-church-navy/5 text-church-navy overflow-hidden hover:scale-105 active:scale-95 transition-all cursor-pointer"
-                      title="Ver Carteirinha"
+                      title={isNonMemberPosition(member.position) ? "Ver Credencial" : "Ver Carteirinha"}
                     >
                       {member.photoUrl ? (
                         <img src={member.photoUrl} alt={member.name} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
@@ -440,7 +441,7 @@ export default function MemberManagement({ role }: MemberManagementProps) {
                             }}
                             className="flex w-full items-center px-4 py-3 text-sm font-bold text-church-navy hover:bg-church-navy/5 transition-colors"
                           >
-                            Carteirinha
+                            {isNonMemberPosition(member.position) ? 'Credencial' : 'Carteirinha'}
                           </button>
                           <button 
                             onClick={() => handleOpenEditModal(member)}
@@ -568,7 +569,12 @@ export default function MemberManagement({ role }: MemberManagementProps) {
                       <option value="Missionário">Missionário</option>
                       <option value="Missionária">Missionária</option>
                       <option value="Diácono">Diácono</option>
+                      <option value="Diaconisa">Diaconisa</option>
                       <option value="Evangelista">Evangelista</option>
+                      <option value="Secretária">Secretária</option>
+                      <option value="Tesoureira">Tesoureira</option>
+                      <option value="Porteiro Zelador">Porteiro Zelador</option>
+                      <option value="Apoio">Apoio</option>
                     </select>
                   </div>
                   <BirthdayPicker 

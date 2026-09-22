@@ -3,7 +3,7 @@ import { collection, query, where, orderBy, limit } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 import { format, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { FileText, Clock, CheckCircle2, ChevronRight, AlertCircle, Plus, Eye, IdCard, Users, Cake, Gift, MessageCircle, Camera, Calendar, MapPin, Sparkles, Mic, User, Store } from 'lucide-react';
+import { FileText, Clock, CheckCircle2, ChevronRight, AlertCircle, Plus, Eye, IdCard, Users, Cake, Gift, MessageCircle, Camera, Calendar, MapPin, Sparkles, Mic, User, Store, BookOpen, Music, ClipboardList, Brain } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useState, useMemo } from 'react';
@@ -12,8 +12,8 @@ import MemberIDCardModal from '../components/MemberIDCardModal';
 import VerseOfTheDay from '../components/VerseOfTheDay';
 import ChurchAddressMap from '../components/ChurchAddressMap';
 import PixContributionCard from '../components/PixContributionCard';
-
 import AnnouncementBanner from '../components/AnnouncementBanner';
+import { isNonMemberPosition, getCardTitle } from '../lib/utils';
 
 const getRoleLabel = (r: string | null) => {
   if (!r) return '';
@@ -29,6 +29,10 @@ const getRoleLabel = (r: string | null) => {
     diácono: 'Diácono',
     evangelista: 'Evangelista',
     diaconisa: 'Diaconisa',
+    secretária: 'Secretária',
+    tesoureira: 'Tesoureira',
+    'porteiro zelador': 'Porteiro Zelador',
+    apoio: 'Apoio',
     'mídia social': 'Mídia social',
     membro: 'Membro'
   };
@@ -45,7 +49,7 @@ export default function Dashboard({ role }: DashboardProps) {
   const [isIDCardOpen, setIsIDCardOpen] = useState(false);
   const [userMemberPhoto, setUserMemberPhoto] = useState<string | null>(null);
 
-  const isAdmin = role && ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'mídia social'].includes(role);
+  const isAdmin = role && ['admin', 'pastor', 'pastora', 'leader', 'obreiro', 'presbítero', 'missionário', 'missionária', 'diácono', 'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social'].includes(role);
   
   const reportsQuery = user ? query(
     collection(db, 'reports'),
@@ -77,6 +81,9 @@ export default function Dashboard({ role }: DashboardProps) {
         isTither: true,
         photoUrl: user.photoURL || userMemberPhoto || null
       } : null);
+
+  const isLeaderOrNonMember = isNonMemberPosition(loggedInMember?.position, role || loggedInMember?.role);
+  const cardTitle = getCardTitle(loggedInMember?.position, role || loggedInMember?.role);
 
   // Query events collection for monthly events
   const [eventsSnap, eventsLoading, eventsError] = useCollection(
@@ -243,6 +250,22 @@ export default function Dashboard({ role }: DashboardProps) {
     return 'Membro';
   };
 
+  const formattedTodayDate = useMemo(() => {
+    try {
+      const raw = format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR });
+      return raw.charAt(0).toUpperCase() + raw.slice(1);
+    } catch {
+      return 'Hoje';
+    }
+  }, []);
+
+  const getUserInitials = (nameStr: string) => {
+    if (!nameStr) return 'BN';
+    const parts = nameStr.trim().split(' ').filter(Boolean);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
   const stats = isAdmin ? [
     { label: 'Relatórios este ano', value: reportsValue?.docs.length || 0, icon: FileText, color: 'text-blue-600' },
     { label: 'Status', value: getRoleLabel(role), icon: CheckCircle2, color: 'text-green-600' },
@@ -253,14 +276,184 @@ export default function Dashboard({ role }: DashboardProps) {
   return (
     <div className="space-y-8">
       <AnnouncementBanner />
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-        <header>
-          <h1 className="font-serif text-3xl font-bold text-church-navy">Bem-vindo, {getGreetingName()}</h1>
-          <p className="text-church-navy/60">
-            {isAdmin ? 'Controle de relatórios mensais - AD Boas Novas' : 'Portal do Membro - AD Boas Novas'}
-          </p>
-        </header>
-      </div>
+      
+      {/* Hero Banner Principal Elegante */}
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0b1b2d] via-church-navy to-[#0f2942] p-5 sm:p-7 text-white shadow-xl border border-church-gold/30">
+        {/* Iluminação Ambiental Dourada */}
+        <div className="absolute -right-16 -top-16 h-64 w-64 rounded-full bg-church-gold/20 blur-3xl pointer-events-none" />
+        <div className="absolute -left-12 -bottom-12 h-52 w-52 rounded-full bg-amber-500/15 blur-2xl pointer-events-none" />
+        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-church-gold/50 to-transparent pointer-events-none" />
+
+        <div className="relative z-10 space-y-6">
+          {/* Top Row: User Avatar, Greeting, Badge Paz do Senhor, Date */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
+            {/* Avatar & User Details */}
+            <div className="flex items-center gap-4">
+              {/* Photo or Initials Avatar with Live Status Indicator */}
+              <div className="relative shrink-0">
+                <div className="p-0.5 rounded-full bg-gradient-to-tr from-church-gold via-amber-300 to-church-gold shadow-md">
+                  {loggedInMember?.photoUrl ? (
+                    <img
+                      src={loggedInMember.photoUrl}
+                      alt={getGreetingName()}
+                      className="h-16 w-16 sm:h-20 sm:w-20 rounded-full object-cover border-2 border-church-navy"
+                    />
+                  ) : (
+                    <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-gradient-to-br from-[#122b46] to-[#0a1829] text-church-gold flex items-center justify-center font-serif text-xl sm:text-2xl font-bold border-2 border-church-navy">
+                      {getUserInitials(loggedInMember?.name || getGreetingName())}
+                    </div>
+                  )}
+                </div>
+                {/* Live Status Indicator */}
+                <span className="absolute bottom-0.5 right-0.5 flex h-4 w-4">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 border-2 border-church-navy" title="Conectado ao vivo"></span>
+                </span>
+              </div>
+
+              {/* Text Info */}
+              <div className="space-y-1">
+                {/* Badges: Paz do Senhor & Data Atual */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-church-gold/20 border border-church-gold/40 px-3 py-0.5 text-xs font-bold text-amber-200 shadow-sm backdrop-blur-sm">
+                    <Sparkles className="h-3 w-3 text-church-gold animate-pulse" />
+                    <span>Paz do Senhor</span>
+                  </span>
+                  <span className="text-xs text-white/75 font-medium capitalize flex items-center gap-1">
+                    <Calendar className="h-3 w-3 text-church-gold/80" />
+                    {formattedTodayDate}
+                  </span>
+                </div>
+
+                <h1 className="font-serif text-2xl sm:text-3xl font-bold text-white tracking-tight leading-snug">
+                  A Paz do Senhor, <span className="text-amber-200">{getGreetingName()}</span>!
+                </h1>
+
+                <p className="text-xs sm:text-sm text-white/80 font-medium flex items-center gap-2">
+                  <span className="inline-block h-2 w-2 rounded-full bg-church-gold" />
+                  {loggedInMember?.position || (isAdmin ? 'Administração & Liderança' : 'Membro AD Boas Novas')}
+                </p>
+              </div>
+            </div>
+
+            {/* Direct Action Badge on Top Right */}
+            <div className="hidden sm:flex items-center gap-2">
+              <button
+                onClick={() => setIsIDCardOpen(true)}
+                className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-church-gold to-amber-500 px-4 py-2.5 text-xs font-bold text-church-navy shadow-lg hover:brightness-110 active:scale-95 transition-all cursor-pointer"
+              >
+                <IdCard className="h-4 w-4" />
+                <span>Minha Credencial</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Barra de Acesso Rápido / Quick Access Bar */}
+          <div className="pt-4 border-t border-white/10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-2.5">
+            <button
+              onClick={() => setIsIDCardOpen(true)}
+              className="group flex items-center gap-2 sm:gap-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-church-gold/40 p-2.5 sm:p-3 text-left transition-all active:scale-95 cursor-pointer backdrop-blur-sm min-w-0"
+            >
+              <div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-church-gold/20 text-church-gold group-hover:bg-church-gold group-hover:text-church-navy transition-colors">
+                <IdCard className="h-4 w-4 sm:h-5 sm:w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="block text-[11px] sm:text-xs font-bold text-white group-hover:text-amber-200 leading-tight">
+                  Credencial Digital
+                </span>
+                <span className="block text-[9.5px] sm:text-[10px] text-white/60 font-medium leading-tight mt-0.5 truncate">
+                  {cardTitle}
+                </span>
+              </div>
+            </button>
+
+            <Link
+              to="/quiz"
+              className="group flex items-center gap-2 sm:gap-3 rounded-2xl bg-amber-400/20 hover:bg-amber-400/30 border border-amber-400/40 p-2.5 sm:p-3 text-left transition-all active:scale-95 cursor-pointer backdrop-blur-sm min-w-0"
+            >
+              <div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-amber-400 text-church-navy font-bold shadow-sm">
+                <Brain className="h-4 w-4 sm:h-5 sm:w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="block text-[11px] sm:text-xs font-bold text-amber-200 group-hover:text-amber-100 leading-tight">
+                  Quiz Bíblico & Ranking
+                </span>
+                <span className="block text-[9.5px] sm:text-[10px] text-white/70 font-medium leading-tight mt-0.5 truncate">
+                  3 a 5 Perguntas & Prêmios
+                </span>
+              </div>
+            </Link>
+
+            <Link
+              to="/biblia"
+              className="group flex items-center gap-2 sm:gap-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-church-gold/40 p-2.5 sm:p-3 text-left transition-all active:scale-95 cursor-pointer backdrop-blur-sm min-w-0"
+            >
+              <div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-church-gold/20 text-church-gold group-hover:bg-church-gold group-hover:text-church-navy transition-colors">
+                <BookOpen className="h-4 w-4 sm:h-5 sm:w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="block text-[11px] sm:text-xs font-bold text-white group-hover:text-amber-200 leading-tight">
+                  Bíblia Sagrada
+                </span>
+                <span className="block text-[9.5px] sm:text-[10px] text-white/60 font-medium leading-tight mt-0.5 truncate">
+                  Leitura & Estudo
+                </span>
+              </div>
+            </Link>
+
+            <Link
+              to="/harpa"
+              className="group flex items-center gap-2 sm:gap-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-church-gold/40 p-2.5 sm:p-3 text-left transition-all active:scale-95 cursor-pointer backdrop-blur-sm min-w-0"
+            >
+              <div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-church-gold/20 text-church-gold group-hover:bg-church-gold group-hover:text-church-navy transition-colors">
+                <Music className="h-4 w-4 sm:h-5 sm:w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="block text-[11px] sm:text-xs font-bold text-white group-hover:text-amber-200 leading-tight">
+                  Harpa Cristã
+                </span>
+                <span className="block text-[9.5px] sm:text-[10px] text-white/60 font-medium leading-tight mt-0.5 truncate">
+                  Hinos & Louvores
+                </span>
+              </div>
+            </Link>
+
+            <Link
+              to="/admin/escalas"
+              className="group flex items-center gap-2 sm:gap-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-church-gold/40 p-2.5 sm:p-3 text-left transition-all active:scale-95 cursor-pointer backdrop-blur-sm min-w-0"
+            >
+              <div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-church-gold/20 text-church-gold group-hover:bg-church-gold group-hover:text-church-navy transition-colors">
+                <ClipboardList className="h-4 w-4 sm:h-5 sm:w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="block text-[11px] sm:text-xs font-bold text-white group-hover:text-amber-200 leading-tight">
+                  Escala de Cultos
+                </span>
+                <span className="block text-[9.5px] sm:text-[10px] text-white/60 font-medium leading-tight mt-0.5 truncate">
+                  Voluntários & Trocas
+                </span>
+              </div>
+            </Link>
+
+            <Link
+              to="/estudos"
+              className="group flex items-center gap-2 sm:gap-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-church-gold/40 p-2.5 sm:p-3 text-left transition-all active:scale-95 cursor-pointer backdrop-blur-sm min-w-0 col-span-2 sm:col-span-1"
+            >
+              <div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-church-gold/20 text-church-gold group-hover:bg-church-gold group-hover:text-church-navy transition-colors">
+                <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="block text-[11px] sm:text-xs font-bold text-white group-hover:text-amber-200 leading-tight">
+                  Estudos Bíblicos
+                </span>
+                <span className="block text-[9.5px] sm:text-[10px] text-white/60 font-medium leading-tight mt-0.5 truncate">
+                  Esboços e Lições
+                </span>
+              </div>
+            </Link>
+          </div>
+        </div>
+      </section>
 
       {/* Devocional do Dia */}
       <VerseOfTheDay />
@@ -412,8 +605,14 @@ export default function Dashboard({ role }: DashboardProps) {
               <div className="inline-block bg-church-gold/10 text-church-gold font-bold text-[9px] uppercase tracking-widest px-2 py-0.5 rounded-full border border-church-gold/25">
                 CREDENCIAL DIGITAL
               </div>
-              <h3 className="font-serif text-lg font-black text-church-navy mt-1">Sua Carteira de Membro</h3>
-              <p className="text-xs text-church-navy/60">Visualize, imprima e faça o upload de sua foto oficial de membro.</p>
+              <h3 className="font-serif text-lg font-black text-church-navy mt-1">
+                {isLeaderOrNonMember ? 'Sua Credencial' : 'Sua Carteira de Membro'}
+              </h3>
+              <p className="text-xs text-church-navy/60">
+                {isLeaderOrNonMember
+                  ? 'Visualize, imprima e faça o upload de sua foto oficial de credencial.'
+                  : 'Visualize, imprima e faça o upload de sua foto oficial de membro.'}
+              </p>
             </div>
           </div>
           

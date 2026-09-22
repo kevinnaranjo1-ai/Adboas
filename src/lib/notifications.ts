@@ -3,6 +3,7 @@ import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messagi
 import { db } from './firebase';
 import { collection, addDoc, setDoc, doc, serverTimestamp, getDocs, query, where } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
+import { subscribeToPush, sendPushNotificationToMembers } from './pushSubscription';
 
 // Chave VAPID pública para o Firebase (se configurada)
 const VAPID_KEY = (import.meta as any).env?.VITE_VAPID_KEY;
@@ -24,19 +25,29 @@ export async function getMessagingInstance() {
 /**
  * Solicita permissão para receber notificações push
  */
-export async function requestNotificationPermission(userId: string) {
+export async function requestNotificationPermission(userIdOrUser: any, role?: string) {
   if (!('Notification' in window)) {
     console.warn('Este dispositivo não suporta notificações de navegador.');
     return null;
   }
 
   try {
+    const userObj = typeof userIdOrUser === 'string'
+      ? { uid: userIdOrUser }
+      : (userIdOrUser || {});
+
+    // Inscreve no WebPush nativo em segundo plano (funciona com app fechado)
+    if (userObj?.uid) {
+      await subscribeToPush({ user: userObj, role });
+    }
+
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
+      const userId = userObj.uid;
       // Tenta registrar FCM apenas se uma chave VAPID real foi fornecida no ambiente
       if (VAPID_KEY && VAPID_KEY.length > 20 && VAPID_KEY !== 'BF9N5O-7_gInQv77vHk0o6y18h07gXQkI2F6lG2-H_tH3k3e3_k5Mh_S_vE') {
         const messaging = await getMessagingInstance();
-        if (messaging) {
+        if (messaging && userId) {
           try {
             const token = await getToken(messaging, { vapidKey: VAPID_KEY });
             if (token) {
@@ -50,11 +61,11 @@ export async function requestNotificationPermission(userId: string) {
               return token;
             }
           } catch (fcmErr) {
-            console.log('FCM Push não configurado externamente, operando em modo de notificações locais HTML5.');
+            console.log('FCM Push operando em modo de notificações WebPush nativas.');
           }
         }
       } else {
-        console.log('Notificações push nativas do navegador (Web Push Local) ativadas!');
+        console.log('Notificações push nativas de segundo plano (Web Push) ativadas!');
       }
     } else {
       console.warn('Permissão de notificações recusada pelo usuário.');
@@ -166,7 +177,7 @@ export async function createPrayerRequestNotification(
     const targetRoles = [
       'admin', 'pastor', 'pastora', 'leader', 'obreiro', 
       'presbítero', 'missionário', 'missionária', 'diácono', 
-      'evangelista', 'diaconisa', 'mídia social', 'membro'
+      'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social', 'membro'
     ];
 
     const notificationPayload = {
@@ -180,6 +191,14 @@ export async function createPrayerRequestNotification(
 
     const docRef = await addDoc(collection(db, 'notifications'), notificationPayload);
     console.log('Notificação de pedido de oração criada no banco de dados:', docRef.id);
+
+    // Dispara push para os membros mesmo com app fechado
+    await sendPushNotificationToMembers({
+      title,
+      body,
+      url: '/oracao',
+      category: 'oracao'
+    });
 
     await sendSystemNotification(title, body, '/oracao');
 
@@ -213,13 +232,25 @@ export async function createStudyNotification(
       title,
       body,
       type: 'study_publish',
-      roles: targetRoles,
+      roles: [
+        'admin', 'pastor', 'pastora', 'leader', 'obreiro', 
+        'presbítero', 'missionário', 'missionária', 'diácono', 
+        'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social', 'membro'
+      ],
       readBy: [],
       createdAt: serverTimestamp()
     };
 
     const docRef = await addDoc(collection(db, 'notifications'), notificationPayload);
     console.log('Notificação de estudo criado no banco de dados:', docRef.id);
+
+    // Dispara push para os membros mesmo com app fechado
+    await sendPushNotificationToMembers({
+      title,
+      body,
+      url: '/estudos',
+      category: 'estudo'
+    });
 
     await sendSystemNotification(title, body, '/estudos');
  
@@ -251,7 +282,11 @@ export async function createEBDMaterialNotification(
       title,
       body,
       type: 'ebd_material_publish',
-      roles: targetRoles,
+      roles: [
+        'admin', 'pastor', 'pastora', 'leader', 'obreiro', 
+        'presbítero', 'missionário', 'missionária', 'diácono', 
+        'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social', 'membro'
+      ],
       readBy: [],
       createdAt: serverTimestamp()
     };
@@ -292,13 +327,25 @@ export async function createEventNotification(
       title,
       body,
       type: 'event_add',
-      roles: targetRoles,
+      roles: [
+        'admin', 'pastor', 'pastora', 'leader', 'obreiro', 
+        'presbítero', 'missionário', 'missionária', 'diácono', 
+        'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social', 'membro'
+      ],
       readBy: [],
       createdAt: serverTimestamp()
     };
 
     const docRef = await addDoc(collection(db, 'notifications'), notificationPayload);
     console.log('Notificação de evento criado no banco de dados:', docRef.id);
+
+    // Dispara push para os membros mesmo com app fechado
+    await sendPushNotificationToMembers({
+      title,
+      body,
+      url: '/admin/agenda',
+      category: 'evento'
+    });
 
     await sendSystemNotification(title, body, '/admin/agenda');
 
@@ -335,13 +382,25 @@ export async function createVideoLinkNotification(
       title,
       body,
       type: 'video_publish',
-      roles: targetRoles,
+      roles: [
+        'admin', 'pastor', 'pastora', 'leader', 'obreiro', 
+        'presbítero', 'missionário', 'missionária', 'diácono', 
+        'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social', 'membro'
+      ],
       readBy: [],
       createdAt: serverTimestamp()
     };
 
     const docRef = await addDoc(collection(db, 'notifications'), notificationPayload);
     console.log('Notificação de vídeo criada no banco de dados:', docRef.id);
+
+    // Dispara push para os membros mesmo com app fechado
+    await sendPushNotificationToMembers({
+      title,
+      body,
+      url: '/videos',
+      category: 'video'
+    });
 
     await sendSystemNotification(title, body, '/videos');
 
@@ -371,7 +430,11 @@ export async function createBirthdayNotification(
       body,
       type: 'birthday',
       targetUserId: birthdayPersonId,
-      roles: targetRoles,
+      roles: [
+        'admin', 'pastor', 'pastora', 'leader', 'obreiro', 
+        'presbítero', 'missionário', 'missionária', 'diácono', 
+        'evangelista', 'diaconisa', 'secretária', 'tesoureira', 'porteiro zelador', 'apoio', 'mídia social', 'membro'
+      ],
       readBy: [],
       createdAt: serverTimestamp()
     };
@@ -435,7 +498,19 @@ export async function createSegmentedNotification(payload: SegmentedNotification
     const docRef = await addDoc(collection(db, 'notifications'), notificationPayload);
     console.log('Notificação push segmentada registrada no banco de dados:', docRef.id);
 
-    // Dispara a notificação sistêmica
+    // Dispara a notificação push real para os aparelhos dos membros (funciona com app fechado)
+    await sendPushNotificationToMembers({
+      title,
+      body,
+      url: targetUrl,
+      targetGroup,
+      targetRoles,
+      category,
+      senderName,
+      senderId
+    });
+
+    // Dispara a notificação sistêmica no navegador atual
     await sendSystemNotification(title, body, targetUrl);
 
     return docRef.id;

@@ -5,6 +5,8 @@ import { updateProfile } from 'firebase/auth';
 import { User as UserIcon, Mail, Shield, Check, Loader2, Save, Calendar, Smartphone, Award, ThumbsUp, IdCard } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import MemberIDCardModal from '../components/MemberIDCardModal';
+import { PushNotificationCard } from '../components/notifications/PushNotificationCard';
+import { isNonMemberPosition } from '../lib/utils';
 
 export default function Profile() {
   const user = auth.currentUser;
@@ -117,6 +119,10 @@ export default function Profile() {
       diácono: 'Diácono',
       evangelista: 'Evangelista',
       diaconisa: 'Diaconisa',
+      secretária: 'Secretária',
+      tesoureira: 'Tesoureira',
+      'porteiro zelador': 'Porteiro Zelador',
+      apoio: 'Apoio',
       'mídia social': 'Mídia Social',
       membro: 'Membro'
     };
@@ -259,12 +265,19 @@ export default function Profile() {
             </div>
           </form>
 
+          {/* Notificações no Celular (Push em Segundo Plano) */}
+          <div className="border-t border-church-gold/10 pt-8">
+            <PushNotificationCard currentUser={user} userRole={userDoc?.role || 'membro'} />
+          </div>
+
           {/* Member Card Details if authenticated as linked church member */}
           {memberData && (
             <div className="border-t border-church-gold/10 pt-8 space-y-6">
               <div className="flex items-center gap-2">
                 <Award className="h-5 w-5 text-church-gold" />
-                <h3 className="font-serif text-lg font-bold text-church-navy">Sua Ficha de Membro Oficial</h3>
+                <h3 className="font-serif text-lg font-bold text-church-navy">
+                  {isNonMemberPosition(memberData?.position, userDoc?.role) ? 'Sua Ficha / Credencial Oficial' : 'Sua Ficha de Membro Oficial'}
+                </h3>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
@@ -325,6 +338,7 @@ export default function Profile() {
             birthDate: memberData?.birthDate || '',
             department: memberData?.department || '',
             position: memberData?.position || getRoleLabel(userDoc?.role || 'membro'),
+            role: userDoc?.role,
             isBaptized: memberData?.isBaptized ?? true,
             isSpiritBaptized: memberData?.isSpiritBaptized ?? false,
             isTither: memberData?.isTither ?? true,

@@ -14,21 +14,63 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Intercepta mensagens de push em segundo plano
+// 1. Intercepta mensagens de push padrão W3C (Web Push nativo mesmo com app fechado)
+self.addEventListener('push', (event) => {
+  console.log('[firebase-messaging-sw.js] Evento push recebido em segundo plano:', event);
+  
+  let payload = {};
+  if (event.data) {
+    try {
+      payload = event.data.json();
+    } catch (e) {
+      payload = { title: 'AD Boas Novas', body: event.data.text() };
+    }
+  }
+
+  const title = payload.title || payload.notification?.title || 'AD Boas Novas - Tenda da Promessa';
+  const body = payload.body || payload.notification?.body || 'Você recebeu um novo aviso da igreja.';
+  const icon = payload.icon || '/logo.png';
+  const badge = payload.badge || '/logo.png';
+  const targetUrl = payload.url || payload.data?.url || '/';
+  const tag = payload.tag || payload.data?.tag || `push-${Date.now()}`;
+
+  const notificationOptions = {
+    body,
+    icon,
+    badge,
+    tag,
+    data: {
+      url: targetUrl,
+      id: payload.id || payload.data?.id
+    },
+    vibrate: [300, 150, 300],
+    requireInteraction: true,
+    actions: [
+      { action: 'open', title: 'Abrir Aplicativo' }
+    ]
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(title, notificationOptions)
+  );
+});
+
+// 2. Intercepta mensagens de push via Firebase Cloud Messaging (FCM)
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Mensagem recebida em segundo plano:', payload);
   
-  const notificationTitle = payload.notification?.title || 'Novo Relatório Enviado';
+  const notificationTitle = payload.notification?.title || 'Novo Aviso da Igreja';
   const notificationOptions = {
-    body: payload.notification?.body || 'Um novo relatório foi enviado por um líder de departamento.',
+    body: payload.notification?.body || 'Um novo comunicado foi publicado pela igreja.',
     icon: '/logo.png',
     badge: '/logo.png',
-    tag: payload.data?.reportId || 'new-report',
+    tag: payload.data?.reportId || payload.data?.tag || `fcm-${Date.now()}`,
     data: {
       url: payload.data?.url || '/',
       reportId: payload.data?.reportId
     },
-    vibrate: [200, 100, 200]
+    vibrate: [300, 150, 300],
+    requireInteraction: true
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
